@@ -1,0 +1,28 @@
+#ifndef ADAPTIVE_BLEND_AZSLI
+#define ADAPTIVE_BLEND_AZSLI
+
+float3[9] AdaptiveBlendSH(
+    float3 newSH[9],
+    inout float3 historySH[9],
+    float temporalWeight)
+{
+    float newLum = max(dot(newSH[0], float3(0.2126, 0.7152, 0.0722)), 1e-4);
+    float histLum = max(dot(historySH[0], float3(0.2126, 0.7152, 0.0722)), 1e-4);
+    float diff = abs(newLum - histLum) / max(histLum, 1e-4);
+
+    float weight;
+    if (diff < 0.1)
+        weight = temporalWeight;
+    else if (diff < 0.5)
+        weight = 0.3;
+    else
+        weight = 1.0;
+
+    float3 blended[9];
+    for (int i = 0; i < 9; ++i)
+        blended[i] = lerp(historySH[i], newSH[i], weight);
+
+    historySH = blended;
+    return blended;
+}
+#endif

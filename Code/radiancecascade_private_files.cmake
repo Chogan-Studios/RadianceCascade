@@ -7,14 +7,18 @@
 #
 
 set(FILES
-    Source/RadianceCascadeModuleInterface.cpp
-    Source/RadianceCascadeModuleInterface.h
+    Source/Clients/RadianceCascadeModule.cpp
     Source/Clients/RadianceCascadeSystemComponent.cpp
     Source/Clients/RadianceCascadeSystemComponent.h
-    Source/Components/RadianceCascadeComponent.h
     Source/Components/RadianceCascadeComponent.cpp
-    Source/Components/RadianceCascadeComponentController.h
+    Source/Components/RadianceCascadeComponent.h
     Source/Components/RadianceCascadeComponentController.cpp
-    Source/Render/RadianceCascadeFeatureProcessor.h
-    Source/Render/RadianceCascadeFeatureProcessor.cpp
+    Source/Components/RadianceCascadeComponentController.h
+    Source/RadianceCascadeModuleInterface.h              
+    Source/RadianceCascadeModuleInterface.cpp            
+    Source/Render/CascadeFeatureProcessor.cpp
+    Source/Render/Passes/CascadeInjectPass.cpp
+    Source/Render/Passes/CascadeMergePass.cpp
+    Source/Render/Passes/CascadeGISamplePass.cpp
+    Source/Render/Passes/CascadeReflectionSamplePass.cpp
 )

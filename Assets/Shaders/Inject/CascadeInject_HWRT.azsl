@@ -1,0 +1,5 @@
+#define USE_HWRT 1
+#include <Utils/SH.azsli>
+#include <Utils/AdaptiveBlend.azsli>
+
+// Similar structure, but uses RayQuery

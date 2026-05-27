@@ -1,24 +1,27 @@
+#pragma once
 
-#include <AzCore/Memory/Memory_fwd.h>
 #include <AzCore/Module/Module.h>
-#include <AzCore/RTTI/RTTIMacros.h>
-#include <AzCore/RTTI/TypeInfoSimple.h>
+#include <Atom/RPI.Public/Pass/PassSystemInterface.h>
 
 namespace RadianceCascade
 {
-    class RadianceCascadeModuleInterface
-        : public AZ::Module
+    class RadianceCascadeModuleInterface : public AZ::Module
     {
     public:
-        AZ_TYPE_INFO_WITH_NAME_DECL(RadianceCascadeModuleInterface)
-        AZ_RTTI_NO_TYPE_INFO_DECL()
-        AZ_CLASS_ALLOCATOR_DECL
+        AZ_RTTI(RadianceCascadeModuleInterface, "{YOUR-MODULE-GUID}", AZ::Module);
+        AZ_CLASS_ALLOCATOR(RadianceCascadeModuleInterface, AZ::SystemAllocator);
 
         RadianceCascadeModuleInterface();
+        ~RadianceCascadeModuleInterface() = default;
 
-        /**
-         * Add required SystemComponents to the SystemEntity.
-         */
         AZ::ComponentTypeList GetRequiredSystemComponents() const override;
+
+    protected:
+        void Activate() override;
+        void Deactivate() override;
+
+    private:
+        void RegisterPasses();
+        void RegisterFeatureProcessors();
     };
-}// namespace RadianceCascade
+}

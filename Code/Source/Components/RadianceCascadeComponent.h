@@ -1,30 +1,24 @@
-/*
- * Copyright (c) Contributors to the Open 3D Engine Project.
- * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- *
- * SPDX-License-Identifier: Apache-2.0 OR MIT
- *
- */
-
 #pragma once
 
+#include <AzCore/Component/Component.h>
 #include <Components/RadianceCascadeComponentController.h>
-#include <AzFramework/Components/ComponentAdapter.h>
+#include <AzCore/Math/Vector3.h>
 
 namespace RadianceCascade
 {
-    inline constexpr AZ::TypeId RadianceCascadeComponentTypeId { "{34868EAF-BA20-42D2-BBC5-A5A8D538C6F0}" };
-
-    class RadianceCascadeComponent final
-        : public AzFramework::Components::ComponentAdapter<RadianceCascadeComponentController, RadianceCascadeComponentConfig>
+    class RadianceCascadeComponent final : public AZ::Component
     {
     public:
-        using BaseClass = AzFramework::Components::ComponentAdapter<RadianceCascadeComponentController, RadianceCascadeComponentConfig>;
-        AZ_COMPONENT(RadianceCascadeComponent, RadianceCascadeComponentTypeId, BaseClass);
-
-        RadianceCascadeComponent() = default;
-        RadianceCascadeComponent(const RadianceCascadeComponentConfig& config);
+        AZ_COMPONENT(RadianceCascadeComponent, "{YOUR-COMP-GUID}");
 
         static void Reflect(AZ::ReflectContext* context);
+        void Activate() override;
+        void Deactivate() override;
+
+    private:
+        RadianceCascadeComponentController m_controller;
+        // Volume settings (will be extended later)
+        float m_probeSpacing = 1.0f;
+        AZ::Vector3 m_volumeSize = AZ::Vector3(20.0f);
     };
 }

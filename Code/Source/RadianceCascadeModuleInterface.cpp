@@ -1,33 +1,49 @@
-
 #include "RadianceCascadeModuleInterface.h"
-#include <AzCore/Memory/Memory.h>
-
-#include <RadianceCascade/RadianceCascadeTypeIds.h>
-
-#include <Clients/RadianceCascadeSystemComponent.h>
+#include "Render/CascadeFeatureProcessor.h"
+#include "Render/Passes/CascadeInjectPass.h"
+#include "Render/Passes/CascadeMergePass.h"
+#include "Render/Passes/CascadeGISamplePass.h"
+#include "Render/Passes/CascadeReflectionSamplePass.h"
+#include <Atom/RPI.Public/RPISystemInterface.h>
+#include <Atom/RPI.Public/Scene.h>
 
 namespace RadianceCascade
 {
-    AZ_TYPE_INFO_WITH_NAME_IMPL(RadianceCascadeModuleInterface,
-        "RadianceCascadeModuleInterface", RadianceCascadeModuleInterfaceTypeId);
-    AZ_RTTI_NO_TYPE_INFO_IMPL(RadianceCascadeModuleInterface, AZ::Module);
-    AZ_CLASS_ALLOCATOR_IMPL(RadianceCascadeModuleInterface, AZ::SystemAllocator);
-
     RadianceCascadeModuleInterface::RadianceCascadeModuleInterface()
     {
-        // Push results of [MyComponent]::CreateDescriptor() into m_descriptors here.
-        // Add ALL components descriptors associated with this gem to m_descriptors.
-        // This will associate the AzTypeInfo information for the components with the the SerializeContext, BehaviorContext and EditContext.
-        // This happens through the [MyComponent]::Reflect() function.
-        m_descriptors.insert(m_descriptors.end(), {
-            RadianceCascadeSystemComponent::CreateDescriptor(),
-            });
     }
 
     AZ::ComponentTypeList RadianceCascadeModuleInterface::GetRequiredSystemComponents() const
     {
-        return AZ::ComponentTypeList{
-            azrtti_typeid<RadianceCascadeSystemComponent>(),
-        };
+        return AZ::ComponentTypeList{};
     }
-} // namespace RadianceCascade
+
+    void RadianceCascadeModuleInterface::Activate()
+    {
+        RegisterPasses();
+        RegisterFeatureProcessors();
+    }
+
+    void RadianceCascadeModuleInterface::Deactivate()
+    {
+    }
+
+    void RadianceCascadeModuleInterface::RegisterPasses()
+    {
+        auto* passSystem = AZ::RPI::RPISystemInterface::Get()->GetPassSystem();
+        passSystem->AddPassCreator(AZ::Name("CascadeInjectPass"), &CascadeInjectPass::Create);
+        passSystem->AddPassCreator(AZ::Name("CascadeMergePass"), &CascadeMergePass::Create);
+        passSystem->AddPassCreator(AZ::Name("CascadeGISamplePass"), &CascadeGISamplePass::Create);
+        passSystem->AddPassCreator(AZ::Name("CascadeReflectionSamplePass"), &CascadeReflectionSamplePass::Create);
+    }
+
+    void RadianceCascadeModuleInterface::RegisterFeatureProcessors()
+    {
+        auto* scene = AZ::RPI::RPISystemInterface::Get()->GetDefaultScene();
+        if (scene)
+        {
+            auto fp = CascadeFeatureProcessor::Create();
+            scene->AddFeatureProcessor(AZStd::move(fp));
+        }
+    }
+}

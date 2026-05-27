@@ -1,0 +1,18 @@
+#ifndef PROBE_INDEXING_AZSLI
+#define PROBE_INDEXING_AZSLI
+
+// Map a 3D probe coordinate (ix, iy, iz) within a grid of size (dimX, dimY, dimZ) to a linear index
+uint Flatten3D(int3 coord, int3 dims)
+{
+    return coord.x + coord.y * dims.x + coord.z * dims.x * dims.y;
+}
+
+// Given a world position, return the probe coordinate for a given cascade level (clipmap origin and cell size)
+int3 WorldToProbeCoord(float3 worldPos, float3 clipmapOrigin, float cellSize, int3 gridDims)
+{
+    float3 local = worldPos - clipmapOrigin;
+    int3 coord = int3(floor(local / cellSize));
+    coord = clamp(coord, int3(0,0,0), gridDims - 1);
+    return coord;
+}
+#endif

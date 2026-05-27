@@ -1,0 +1,21 @@
+// CascadeInject_Software.azsl
+#define USE_SOFTWARE 1
+#include <Utils/SH.azsli>
+#include <Utils/ProbeIndexing.azsli>
+#include <Utils/AdaptiveBlend.azsli>
+
+// Assume SRG provides:
+// - float3 clipmapOrigin;
+// - float cellSize;
+// - int3 probeGridDims;
+// - RWTexture3D<float4> probeSHBuffer;  // each texel is a coefficient? We'll use a buffer approach.
+// For now, we'll illustrate the logic with comments.
+
+[numthreads(64, 1, 1)]
+void CascadeInject_Software_CS()
+{
+    uint probeIndex = // compute from thread group and scheduling
+    // ...
+    // For each probe, render a tiny cube map, convert to SH, then adaptive blend.
+    // Implementation details omitted for brevity.
+}

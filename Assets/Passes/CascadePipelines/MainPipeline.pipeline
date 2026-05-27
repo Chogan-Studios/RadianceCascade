@@ -1,0 +1,20 @@
+{
+    "Class": "PipelineExtension",
+    "Extensions": [
+        {
+            "Pipeline": "MainPipeline",
+            "Before": "SsaoPass",
+            "Passes": [
+                {
+                    "Name": "CascadeInjectPass",
+                    "Template": "CascadeInjectTemplate",
+                    "Enabled": true
+                },
+                {
+                    "Name": "CascadeMergePass",
+                    "Template": "CascadeMergeTemplate"
+                }
+            ]
+        }
+    ]
+}
