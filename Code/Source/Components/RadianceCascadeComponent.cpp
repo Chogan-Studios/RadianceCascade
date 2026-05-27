@@ -4,19 +4,25 @@
 
 namespace RadianceCascade
 {
+    RadianceCascadeComponent::RadianceCascadeComponent(const RadianceCascadeComponentConfig& config)
+        : m_configuration(config)
+    {
+    }
+
     void RadianceCascadeComponent::Reflect(AZ::ReflectContext* context)
     {
+        RadianceCascadeComponentConfig::Reflect(context);
+
         if (auto* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serialize->Class<RadianceCascadeComponent, AZ::Component>()
                 ->Version(1)
-                ->Field("ProbeSpacing", &RadianceCascadeComponent::m_probeSpacing)
-                ->Field("VolumeSize", &RadianceCascadeComponent::m_volumeSize);
+                ->Field("Configuration", &RadianceCascadeComponent::m_configuration);
         }
 
         if (auto* behavior = azrtti_cast<AZ::BehaviorContext*>(context))
         {
-            behavior->ConstantProperty("RadianceCascadeComponentTypeId", BehaviorConstant(AZ::Uuid("{YOUR-COMP-GUID}")))
+            behavior->ConstantProperty("RadianceCascadeComponentTypeId", BehaviorConstant(AZ::Uuid("{F6A1B2C3-4D5E-6F7A-8B9C-0D1E2F3A4B5C}")))
                 ->Attribute(AZ::Script::Attributes::Module, "render")
                 ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Common);
         }
@@ -24,7 +30,6 @@ namespace RadianceCascade
 
     void RadianceCascadeComponent::Activate()
     {
-        // Later: register volume with feature processor
     }
 
     void RadianceCascadeComponent::Deactivate()

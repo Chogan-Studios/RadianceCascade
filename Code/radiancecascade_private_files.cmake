@@ -12,10 +12,10 @@ set(FILES
     Source/Clients/RadianceCascadeSystemComponent.h
     Source/Components/RadianceCascadeComponent.cpp
     Source/Components/RadianceCascadeComponent.h
+    Source/Components/RadianceCascadeComponentConfig.cpp
+    Source/Components/RadianceCascadeComponentConfig.h
     Source/Components/RadianceCascadeComponentController.cpp
     Source/Components/RadianceCascadeComponentController.h
-    Source/RadianceCascadeModuleInterface.h              
-    Source/RadianceCascadeModuleInterface.cpp            
     Source/Render/CascadeFeatureProcessor.cpp
     Source/Render/Passes/CascadeInjectPass.cpp
     Source/Render/Passes/CascadeMergePass.cpp

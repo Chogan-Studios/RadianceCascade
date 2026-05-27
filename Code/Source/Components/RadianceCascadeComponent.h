@@ -1,15 +1,17 @@
 #pragma once
-
 #include <AzCore/Component/Component.h>
 #include <Components/RadianceCascadeComponentController.h>
-#include <AzCore/Math/Vector3.h>
+#include <Components/RadianceCascadeComponentConfig.h>
 
 namespace RadianceCascade
 {
     class RadianceCascadeComponent final : public AZ::Component
     {
     public:
-        AZ_COMPONENT(RadianceCascadeComponent, "{YOUR-COMP-GUID}");
+        AZ_COMPONENT(RadianceCascadeComponent, "{F6A1B2C3-4D5E-6F7A-8B9C-0D1E2F3A4B5C}");
+
+        RadianceCascadeComponent() = default;
+        explicit RadianceCascadeComponent(const RadianceCascadeComponentConfig& config);
 
         static void Reflect(AZ::ReflectContext* context);
         void Activate() override;
@@ -17,8 +19,6 @@ namespace RadianceCascade
 
     private:
         RadianceCascadeComponentController m_controller;
-        // Volume settings (will be extended later)
-        float m_probeSpacing = 1.0f;
-        AZ::Vector3 m_volumeSize = AZ::Vector3(20.0f);
+        RadianceCascadeComponentConfig m_configuration;
     };
 }

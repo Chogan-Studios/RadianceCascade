@@ -1,56 +1,27 @@
-/*
- * Copyright (c) Contributors to the Open 3D Engine Project.
- * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- *
- * SPDX-License-Identifier: Apache-2.0 OR MIT
- *
- */
-
-#include <Tools/Components/EditorRadianceCascadeComponent.h>
-#include <AzFramework/StringFunc/StringFunc.h>
-#include <AzToolsFramework/API/ToolsApplicationAPI.h>
-#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
-#include <AzToolsFramework/API/EditorAssetSystemAPI.h>
-#include <AzCore/Component/Entity.h>
-#include <AzCore/IO/SystemFile.h>
+#include "EditorRadianceCascadeComponent.h"
+#include <AzCore/Serialization/SerializeContext.h>
+#include <AzCore/Serialization/EditContext.h>
 
 namespace RadianceCascade
 {
     void EditorRadianceCascadeComponent::Reflect(AZ::ReflectContext* context)
     {
-        BaseClass::Reflect(context);
-
-        if (AZ::SerializeContext* serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
+        if (auto* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
-            serializeContext->Class<EditorRadianceCascadeComponent, BaseClass>()
-                ;
+            serialize->Class<EditorRadianceCascadeComponent, BaseClass>()
+                ->Version(1);
 
-            if (AZ::EditContext* editContext = serializeContext->GetEditContext())
+            if (auto* edit = serialize->GetEditContext())
             {
-                editContext->Class<EditorRadianceCascadeComponent>(
-                    "RadianceCascade", "The RadianceCascade component")
+                edit->Class<EditorRadianceCascadeComponent>("Radiance Cascade", "")
                     ->ClassElement(AZ::Edit::ClassElements::EditorData, "")
-                        ->Attribute(AZ::Edit::Attributes::Category, "Graphics")
-                        ->Attribute(AZ::Edit::Attributes::Icon, "Icons/Components/Component_Placeholder.svg")
-                        ->Attribute(AZ::Edit::Attributes::ViewportIcon, "Icons/Components/Viewport/Component_Placeholder.svg")
-                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC_CE("Game"))
-                        ->Attribute(AZ::Edit::Attributes::AutoExpand, true)
-                        ->Attribute(AZ::Edit::Attributes::HelpPageURL, "")
-                    ;
+                        ->Attribute(AZ::Edit::Attributes::Category, "Rendering")
+                        ->Attribute(AZ::Edit::Attributes::AppearsInAddComponentMenu, AZ_CRC("Game"));
             }
         }
-
-        if (auto behaviorContext = azrtti_cast<AZ::BehaviorContext*>(context))
-        {
-            behaviorContext->ConstantProperty(RadianceCascadeEditorSystemComponentTypeId, BehaviorConstant(AZ::Uuid(RadianceCascadeEditorSystemComponentTypeId)))
-                ->Attribute(AZ::Script::Attributes::Module, "render")
-                ->Attribute(AZ::Script::Attributes::Scope, AZ::Script::Attributes::ScopeFlags::Automation);
-        }
     }
 
-    EditorRadianceCascadeComponent::EditorRadianceCascadeComponent()
-    {
-    }
+    EditorRadianceCascadeComponent::EditorRadianceCascadeComponent() = default;
 
     EditorRadianceCascadeComponent::EditorRadianceCascadeComponent(const RadianceCascadeComponentConfig& config)
         : BaseClass(config)
@@ -60,30 +31,10 @@ namespace RadianceCascade
     void EditorRadianceCascadeComponent::Activate()
     {
         BaseClass::Activate();
-        AzFramework::EntityDebugDisplayEventBus::Handler::BusConnect(GetEntityId());
-        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusConnect(GetEntityId());
-        AZ::TickBus::Handler::BusConnect();
-        AzToolsFramework::EditorEntityInfoNotificationBus::Handler::BusConnect();
-
-        AZ::u64 entityId = (AZ::u64)GetEntityId();
-        m_controller.m_configuration.m_entityId = entityId;
     }
 
     void EditorRadianceCascadeComponent::Deactivate()
     {
-        AzToolsFramework::EditorEntityInfoNotificationBus::Handler::BusDisconnect();
-        AZ::TickBus::Handler::BusDisconnect();
-        AzToolsFramework::EditorComponentSelectionRequestsBus::Handler::BusDisconnect();
-        AzFramework::EntityDebugDisplayEventBus::Handler::BusDisconnect();
         BaseClass::Deactivate();
     }
-
-    void EditorRadianceCascadeComponent::OnTick([[maybe_unused]] float deltaTime, [[maybe_unused]] AZ::ScriptTimePoint time)
-    {
-        if (!m_controller.m_featureProcessor)
-        {
-            return;
-        }
-    }
-
 }

@@ -1,15 +1,13 @@
 #pragma once
-
 #include <AzCore/base.h>
 #include <Atom/RPI.Public/FeatureProcessor.h>
 #include <Atom/RPI.Reflect/Image/Image.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/Math/Transform.h>
-#include <Render/CascadeCommon.h>
+#include <RadianceCascade/Render/CascadeCommon.h>
 
 namespace RadianceCascade
 {
-    // Interface for code outside the render pipeline
     class RadianceCascadeFeatureProcessorInterface : public AZ::RPI::FeatureProcessor
     {
     public:

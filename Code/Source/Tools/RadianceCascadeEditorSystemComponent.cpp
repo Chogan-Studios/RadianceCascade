@@ -1,66 +1,39 @@
-/*
- * Copyright (c) Contributors to the Open 3D Engine Project.
- * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- *
- * SPDX-License-Identifier: Apache-2.0 OR MIT
- *
- */
-
-#include <AzCore/Serialization/SerializeContext.h>
 #include "RadianceCascadeEditorSystemComponent.h"
-
-#include <RadianceCascade/RadianceCascadeTypeIds.h>
+#include <AzCore/Serialization/SerializeContext.h>
+#include <Clients/RadianceCascadeSystemComponent.h>
 
 namespace RadianceCascade
 {
-    AZ_COMPONENT_IMPL(RadianceCascadeEditorSystemComponent, "RadianceCascadeEditorSystemComponent",
-        RadianceCascadeEditorSystemComponentTypeId, BaseSystemComponent);
-
     void RadianceCascadeEditorSystemComponent::Reflect(AZ::ReflectContext* context)
     {
-        if (auto serializeContext = azrtti_cast<AZ::SerializeContext*>(context))
-        {
-            serializeContext->Class<RadianceCascadeEditorSystemComponent, RadianceCascadeSystemComponent>()
-                ->Version(0);
-        }
-    }
-
-    RadianceCascadeEditorSystemComponent::RadianceCascadeEditorSystemComponent() = default;
-
-    RadianceCascadeEditorSystemComponent::~RadianceCascadeEditorSystemComponent() = default;
-
-    void RadianceCascadeEditorSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
-    {
-        BaseSystemComponent::GetProvidedServices(provided);
-        provided.push_back(AZ_CRC_CE("RadianceCascadeSystemEditorService"));
-    }
-
-    void RadianceCascadeEditorSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
-    {
-        BaseSystemComponent::GetIncompatibleServices(incompatible);
-        incompatible.push_back(AZ_CRC_CE("RadianceCascadeSystemEditorService"));
-    }
-
-    void RadianceCascadeEditorSystemComponent::GetRequiredServices([[maybe_unused]] AZ::ComponentDescriptor::DependencyArrayType& required)
-    {
-        BaseSystemComponent::GetRequiredServices(required);
-    }
-
-    void RadianceCascadeEditorSystemComponent::GetDependentServices([[maybe_unused]] AZ::ComponentDescriptor::DependencyArrayType& dependent)
-    {
-        BaseSystemComponent::GetDependentServices(dependent);
+        AZ_UNUSED(context);
     }
 
     void RadianceCascadeEditorSystemComponent::Activate()
     {
-        RadianceCascadeSystemComponent::Activate();
-        AzToolsFramework::EditorEvents::Bus::Handler::BusConnect();
     }
 
     void RadianceCascadeEditorSystemComponent::Deactivate()
     {
-        AzToolsFramework::EditorEvents::Bus::Handler::BusDisconnect();
-        RadianceCascadeSystemComponent::Deactivate();
     }
 
-} // namespace RadianceCascade
+    void RadianceCascadeEditorSystemComponent::GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided)
+    {
+        provided.push_back(AZ_CRC("RadianceCascadeEditorService"));
+    }
+
+    void RadianceCascadeEditorSystemComponent::GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible)
+    {
+        incompatible.push_back(AZ_CRC("RadianceCascadeEditorService"));
+    }
+
+    void RadianceCascadeEditorSystemComponent::GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required)
+    {
+        required.push_back(AZ_CRC("RadianceCascadeService"));
+    }
+
+    void RadianceCascadeEditorSystemComponent::GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent)
+    {
+        AZ_UNUSED(dependent);
+    }
+}

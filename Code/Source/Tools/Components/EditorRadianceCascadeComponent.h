@@ -1,53 +1,25 @@
-/*
- * Copyright (c) Contributors to the Open 3D Engine Project.
- * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- *
- * SPDX-License-Identifier: Apache-2.0 OR MIT
- *
- */
-
 #pragma once
-
-#include <Atom/Feature/Utils/EditorRenderComponentAdapter.h>
-
-#include <AzCore/Component/TickBus.h>
-#include <AzFramework/Entity/EntityDebugDisplayBus.h>
-#include <AzToolsFramework/API/ComponentEntitySelectionBus.h>
-#include <AzToolsFramework/Entity/EditorEntityInfoBus.h>
-#include <AzToolsFramework/ToolsComponents/EditorComponentAdapter.h>
 #include <Components/RadianceCascadeComponent.h>
-
-#include <RadianceCascade/RadianceCascadeTypeIds.h>
+#include <AzToolsFramework/ToolsComponents/EditorComponentAdapter.h>
+#include <AzToolsFramework/ToolsComponents/EditorComponentBase.h>
 
 namespace RadianceCascade
 {
-    inline constexpr AZ::TypeId EditorComponentTypeId { "{6258F544-3E78-4D0C-AB84-05A395DC045A}" };
-
     class EditorRadianceCascadeComponent final
-        : public AZ::Render::EditorRenderComponentAdapter<RadianceCascadeComponentController, RadianceCascadeComponent, RadianceCascadeComponentConfig>
-        , private AzToolsFramework::EditorComponentSelectionRequestsBus::Handler
-        , private AzFramework::EntityDebugDisplayEventBus::Handler
-        , private AZ::TickBus::Handler
-        , private AzToolsFramework::EditorEntityInfoNotificationBus::Handler
+        : public AzToolsFramework::Components::EditorComponentAdapter<RadianceCascadeComponentController, RadianceCascadeComponent, RadianceCascadeComponentConfig>
     {
     public:
-        using BaseClass = AZ::Render::EditorRenderComponentAdapter <RadianceCascadeComponentController, RadianceCascadeComponent, RadianceCascadeComponentConfig>;
-        AZ_EDITOR_COMPONENT(EditorRadianceCascadeComponent, EditorComponentTypeId, BaseClass);
+        AZ_EDITOR_COMPONENT(EditorRadianceCascadeComponent, "{E1F2A3B4-C5D6-7E8F-9A0B-1C2D3E4F5A6B}", EditorComponentBase);
+
+        using BaseClass = AzToolsFramework::Components::EditorComponentAdapter<RadianceCascadeComponentController, RadianceCascadeComponent, RadianceCascadeComponentConfig>;
 
         static void Reflect(AZ::ReflectContext* context);
 
         EditorRadianceCascadeComponent();
-        EditorRadianceCascadeComponent(const RadianceCascadeComponentConfig& config);
+        explicit EditorRadianceCascadeComponent(const RadianceCascadeComponentConfig& config);
+        ~EditorRadianceCascadeComponent() override = default;
 
-        // AZ::Component overrides
         void Activate() override;
         void Deactivate() override;
-
-    private:
-
-        // AZ::TickBus overrides
-        void OnTick(float deltaTime, AZ::ScriptTimePoint time) override;
-
-
     };
 }

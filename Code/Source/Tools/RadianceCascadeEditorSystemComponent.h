@@ -1,41 +1,20 @@
-/*
- * Copyright (c) Contributors to the Open 3D Engine Project.
- * For complete copyright and license terms please see the LICENSE at the root of this distribution.
- *
- * SPDX-License-Identifier: Apache-2.0 OR MIT
- *
- */
-
 #pragma once
-
-#include <AzToolsFramework/API/ToolsApplicationAPI.h>
-
-#include <Clients/RadianceCascadeSystemComponent.h>
+#include <AzCore/Component/Component.h>
 
 namespace RadianceCascade
 {
-    /// System component for RadianceCascade editor
-    class RadianceCascadeEditorSystemComponent
-        : public RadianceCascadeSystemComponent
-        , protected AzToolsFramework::EditorEvents::Bus::Handler
+    class RadianceCascadeEditorSystemComponent : public AZ::Component
     {
-        using BaseSystemComponent = RadianceCascadeSystemComponent;
     public:
-        AZ_COMPONENT_DECL(RadianceCascadeEditorSystemComponent);
+        AZ_COMPONENT(RadianceCascadeEditorSystemComponent, "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}");
 
         static void Reflect(AZ::ReflectContext* context);
-
-        RadianceCascadeEditorSystemComponent();
-        ~RadianceCascadeEditorSystemComponent();
-
-    private:
         static void GetProvidedServices(AZ::ComponentDescriptor::DependencyArrayType& provided);
         static void GetIncompatibleServices(AZ::ComponentDescriptor::DependencyArrayType& incompatible);
         static void GetRequiredServices(AZ::ComponentDescriptor::DependencyArrayType& required);
         static void GetDependentServices(AZ::ComponentDescriptor::DependencyArrayType& dependent);
 
-        // AZ::Component
         void Activate() override;
         void Deactivate() override;
     };
-} // namespace RadianceCascade
+}
