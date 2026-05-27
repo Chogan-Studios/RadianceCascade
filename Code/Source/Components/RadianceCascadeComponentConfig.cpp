@@ -9,9 +9,11 @@ namespace RadianceCascade
         if (auto* serialize = azrtti_cast<AZ::SerializeContext*>(context))
         {
             serialize->Class<RadianceCascadeComponentConfig, AZ::ComponentConfig>()
-                ->Version(1)
+                ->Version(2)
                 ->Field("ProbeSpacing", &RadianceCascadeComponentConfig::m_probeSpacing)
-                ->Field("VolumeSize", &RadianceCascadeComponentConfig::m_volumeSize);
+                ->Field("VolumeSize", &RadianceCascadeComponentConfig::m_volumeSize)
+                ->Field("InjectionMode", &RadianceCascadeComponentConfig::m_injectionMode)
+                ->Field("TemporalWeight", &RadianceCascadeComponentConfig::m_temporalWeight);
         }
     }
 }
