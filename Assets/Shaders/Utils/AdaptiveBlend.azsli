@@ -1,7 +1,7 @@
 #ifndef ADAPTIVE_BLEND_AZSLI
 #define ADAPTIVE_BLEND_AZSLI
 
-float3[9] AdaptiveBlendSH(
+void AdaptiveBlendSH(
     float3 newSH[9],
     inout float3 historySH[9],
     float temporalWeight)
@@ -18,11 +18,9 @@ float3[9] AdaptiveBlendSH(
     else
         weight = 1.0;
 
-    float3 blended[9];
     for (int i = 0; i < 9; ++i)
-        blended[i] = lerp(historySH[i], newSH[i], weight);
-
-    historySH = blended;
-    return blended;
+    {
+        historySH[i] = lerp(historySH[i], newSH[i], weight);
+    }
 }
 #endif

@@ -1,19 +1,46 @@
 #include <RadianceCascade/Render/CascadeFeatureProcessor.h>
-#include <Atom/RPI.Public/RPISystemInterface.h>
-#include <Atom/RPI.Public/Scene.h>
+
 #include <AzCore/Console/Console.h>
 #include <AzCore/Math/MathUtils.h>
+#include <AzCore/Serialization/SerializeContext.h>
+
+#include <Atom/RPI.Public/Pass/PassFilter.h>
+#include <Atom/RPI.Public/Pass/PassSystemInterface.h>
+#include <Atom/RPI.Public/RenderPipeline.h>
+#include <Atom/RPI.Public/RPISystemInterface.h>
+#include <Atom/RPI.Public/Scene.h>
+#include <Atom/RPI.Reflect/Pass/PassRequest.h>
 
 namespace RadianceCascade
 {
+    // =====================================================================
+    // CVars
+    // =====================================================================
+
     AZ_CVAR(int32_t, r_radianceCascade_mode, 0, nullptr, AZ::ConsoleFunctorFlags::Null,
         "0 = Software injection, 1 = Hardware Ray Tracing");
     AZ_CVAR(float, r_radianceCascade_temporalWeight, 0.08f, nullptr, AZ::ConsoleFunctorFlags::Null,
         "Base temporal blend weight for probe accumulation");
 
+    // =====================================================================
+    // Reflection
+    // =====================================================================
+
+    void CascadeFeatureProcessor::Reflect(AZ::ReflectContext* context)
+    {
+        if (auto* serialize = azrtti_cast<AZ::SerializeContext*>(context))
+        {
+            serialize->Class<CascadeFeatureProcessor, AZ::RPI::FeatureProcessor>()
+                ->Version(0);
+        }
+    }
+
+    // =====================================================================
+    // FeatureProcessor lifecycle
+    // =====================================================================
+
     void CascadeFeatureProcessor::Activate()
     {
-        AllocateProbeBuffers();
         m_historyValid = false;
     }
 
@@ -46,9 +73,12 @@ namespace RadianceCascade
         AZ_UNUSED(packet);
     }
 
+    // =====================================================================
+    // Probe buffer / clipmap bookkeeping
+    // =====================================================================
+
     void CascadeFeatureProcessor::AllocateProbeBuffers()
     {
-        // TODO: implement actual probe image creation
     }
 
     void CascadeFeatureProcessor::UpdateClipmap()
@@ -67,6 +97,10 @@ namespace RadianceCascade
         for (uint32_t i = 0; i < MaxCascadeLevels; ++i)
             m_activeProbes[i] = MaxProbesPerLevel[i];
     }
+
+    // =====================================================================
+    // Interface accessors
+    // =====================================================================
 
     AZ::Data::Instance<AZ::RPI::Image> CascadeFeatureProcessor::GetProbeSHBuffer(uint32_t cascadeLevel) const
     {

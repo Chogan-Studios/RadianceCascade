@@ -1,6 +1,16 @@
+#include <Atom/Features/SrgSemantics.azsli>
 
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    Texture3D<float4>   m_probeSH;
+};
 
-void main(){
+float3 SampleSpecularReflection(float3 worldPos, float3 rayDir, float roughness)
+{
+    return float3(0.5, 0.5, 0.5); // placeholder
+}
 
-
+[numthreads(1, 1, 1)]
+void MainCS()
+{
 }

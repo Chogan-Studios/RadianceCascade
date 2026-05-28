@@ -9,10 +9,10 @@ namespace RadianceCascade
         AZ_RTTI(CascadeInjectPass, "{F1A2B3C4-5678-90AB-CDEF-1234567890AB}", AZ::RPI::ComputePass);
         AZ_CLASS_ALLOCATOR(CascadeInjectPass, AZ::SystemAllocator);
 
-        explicit CascadeInjectPass(const AZ::RPI::PassDescriptor& descriptor);
         static AZ::RPI::Ptr<CascadeInjectPass> Create(const AZ::RPI::PassDescriptor& descriptor);
 
     protected:
+        explicit CascadeInjectPass(const AZ::RPI::PassDescriptor& descriptor);
         void BuildInternal() override;
         void FrameBeginInternal(AZ::RPI::Pass::FramePrepareParams params) override;
     };

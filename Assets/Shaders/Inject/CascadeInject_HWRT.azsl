@@ -1,5 +1,13 @@
-#define USE_HWRT 1
-#include <Utils/SH.azsli>
-#include <Utils/AdaptiveBlend.azsli>
+#include <Atom/Features/SrgSemantics.azsli>
 
-// Similar structure, but uses RayQuery
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    RWTexture3D<float4> m_probeSHBuffer;
+};
+
+[numthreads(8, 8, 8)]
+void MainCS(uint3 id : SV_DispatchThreadID)
+{
+    // Placeholder: output something into the 3D texture
+    PassSrg::m_probeSHBuffer[id] = float4(1.0, 0.0, 0.0, 1.0);
+}

@@ -1,10 +1,10 @@
 #include <RadianceCascade/Render/Passes/CascadeInjectPass.h>
+#include <AzCore/Debug/Trace.h>
 
 namespace RadianceCascade
 {
     CascadeInjectPass::CascadeInjectPass(const AZ::RPI::PassDescriptor& descriptor)
-        : ComputePass(descriptor)
-    { }
+        : ComputePass(descriptor) {}
 
     AZ::RPI::Ptr<CascadeInjectPass> CascadeInjectPass::Create(const AZ::RPI::PassDescriptor& descriptor)
     {
@@ -18,7 +18,7 @@ namespace RadianceCascade
 
     void CascadeInjectPass::FrameBeginInternal(AZ::RPI::Pass::FramePrepareParams params)
     {
-        // TODO: implement mode switch when shader options are working
+        AZ_Printf("RadianceCascade", "CascadeInjectPass is running!\n");
         ComputePass::FrameBeginInternal(params);
     }
 }

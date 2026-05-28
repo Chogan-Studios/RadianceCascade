@@ -2,11 +2,12 @@
 
 ShaderResourceGroup PassSrg : SRG_PerPass
 {
-    RWTexture2D<float4> m_outputRW;
+    RWTexture2D<float4> m_outputTexture;
 };
 
 [numthreads(8, 8, 1)]
 void MainCS(uint3 id : SV_DispatchThreadID)
 {
-    PassSrg::m_outputRW[id.xy] = float4(0.0, 1.0, 0.0, 1.0);
+    float2 uv = (id.xy + 0.5) / float2(256, 256);
+    PassSrg::m_outputTexture[id.xy] = float4(uv, 0.5, 1.0);
 }

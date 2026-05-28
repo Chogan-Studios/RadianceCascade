@@ -1,0 +1,28 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "CascadeReflectionSamplePassTemplate",
+            "PassClass": "CascadeReflectionSamplePass",
+            "Slots": [
+                {
+                    "Name": "ProbeSH",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_probeSH"
+                }
+            ],
+            "PassData": {
+                "$type": "ComputePassData",
+                "ShaderAsset": {
+                    "FilePath": "Shaders/Sample/CascadeReflection.azshader"
+                },
+                "ThreadCountX": 32,
+                "ThreadCountY": 32,
+                "ThreadCountZ": 1
+            }
+        }
+    }
+}

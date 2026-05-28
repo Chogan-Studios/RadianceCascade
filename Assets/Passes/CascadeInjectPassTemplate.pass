@@ -1,0 +1,28 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "CascadeInjectPassTemplate",
+            "PassClass": "CascadeInjectPass",
+            "Slots": [
+                {
+                    "Name": "ProbeSHOutput",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_outputRW"
+                }
+            ],
+            "PassData": {
+                "$type": "ComputePassData",
+                "ShaderAsset": {
+                    "FilePath": "Shaders/Inject/CascadeInject_Software.azshader"
+                },
+                "ThreadCountX": 32,
+                "ThreadCountY": 32,
+                "ThreadCountZ": 1
+            }
+        }
+    }
+}

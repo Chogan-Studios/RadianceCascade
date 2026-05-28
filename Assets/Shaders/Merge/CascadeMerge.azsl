@@ -1,6 +1,37 @@
+#include <Atom/Features/SrgSemantics.azsli>
 
+// ---- Inlined from Utils/ProbeIndexing.azsli ----
+int3 WorldToProbeCoord(float3 worldPos, float3 clipmapOrigin, float cellSize, int3 gridDims)
+{
+    float3 local = worldPos - clipmapOrigin;
+    int3 coord = int3(floor(local / cellSize));
+    coord = clamp(coord, int3(0,0,0), gridDims - 1);
+    return coord;
+}
 
-void main(){
+// ---- SRG and entry point ----
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    RWTexture3D<float4> m_fineSH;
+    Texture3D<float4>   m_coarseSH;
+    float3              m_fineOrigin;
+    float3              m_coarseOrigin;
+    float               m_fineCellSize;
+    float               m_coarseCellSize;
+    uint3               m_fineDims;
+    uint3               m_coarseDims;
+};
 
+[numthreads(8, 8, 8)]
+void MainCS(uint3 dispatchThreadID : SV_DispatchThreadID)
+{
+    if (any(dispatchThreadID >= PassSrg::m_fineDims))
+        return;
 
+    float3 fineWorldPos = PassSrg::m_fineOrigin + float3(dispatchThreadID) * PassSrg::m_fineCellSize;
+    int3 coarseCoord = WorldToProbeCoord(fineWorldPos, PassSrg::m_coarseOrigin, PassSrg::m_coarseCellSize, PassSrg::m_coarseDims);
+
+    float4 coarseValue = PassSrg::m_coarseSH[coarseCoord];
+    float4 fineValue   = PassSrg::m_fineSH[dispatchThreadID];
+    PassSrg::m_fineSH[dispatchThreadID] = lerp(fineValue, coarseValue, 0.5);
 }
