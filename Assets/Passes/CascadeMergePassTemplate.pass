@@ -8,13 +8,13 @@
             "PassClass": "CascadeMergePass",
             "Slots": [
                 {
-                    "Name": "FineSH",
+                    "Name": "InputOutput",
                     "SlotType": "InputOutput",
                     "ScopeAttachmentUsage": "Shader",
                     "ShaderInputName": "m_fineSH"
                 },
                 {
-                    "Name": "CoarseSH",
+                    "Name": "CoarseInput",
                     "SlotType": "Input",
                     "ScopeAttachmentUsage": "Shader",
                     "ShaderInputName": "m_coarseSH"
@@ -23,7 +23,7 @@
             "PassData": {
                 "$type": "ComputePassData",
                 "ShaderAsset": {
-                    "FilePath": "Shaders/Merge/CascadeMerge.azshader"
+                    "FilePath": "Shaders/Merge/CascadeMerge.shader"
                 },
                 "ThreadCountX": 32,
                 "ThreadCountY": 32,

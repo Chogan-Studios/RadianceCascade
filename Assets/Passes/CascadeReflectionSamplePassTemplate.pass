@@ -8,7 +8,7 @@
             "PassClass": "CascadeReflectionSamplePass",
             "Slots": [
                 {
-                    "Name": "ProbeSH",
+                    "Name": "Input",
                     "SlotType": "Input",
                     "ScopeAttachmentUsage": "Shader",
                     "ShaderInputName": "m_probeSH"
@@ -17,7 +17,7 @@
             "PassData": {
                 "$type": "ComputePassData",
                 "ShaderAsset": {
-                    "FilePath": "Shaders/Sample/CascadeReflection.azshader"
+                    "FilePath": "Shaders/Sample/CascadeReflection.shader"
                 },
                 "ThreadCountX": 32,
                 "ThreadCountY": 32,

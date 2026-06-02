@@ -2,7 +2,9 @@
 #include <AzCore/Serialization/SerializeContext.h>
 #include <AzCore/Debug/Trace.h>
 #include <Atom/RPI.Public/FeatureProcessorFactory.h>
+#include <Atom/RPI.Public/Pass/PassSystemInterface.h>
 #include <RadianceCascade/Render/CascadeFeatureProcessor.h>
+#include <RadianceCascade/Render/Passes/CascadeInjectPass.h>
 
 namespace RadianceCascade
 {
@@ -32,7 +34,16 @@ namespace RadianceCascade
     void RadianceCascadeSystemComponent::Activate()
     {
         AZ_Printf("RadianceCascade", "SystemComponent Activate!\n");
+
         AZ::RPI::FeatureProcessorFactory::Get()->RegisterFeatureProcessor<CascadeFeatureProcessor>();
+
+        auto* passSystem = AZ::RPI::PassSystemInterface::Get();
+        if (passSystem)
+        {
+            passSystem->AddPassCreator(AZ::Name("CascadeInjectPass"), &CascadeInjectPass::Create);
+            passSystem->LoadPassTemplateMappings("Passes/PassTemplates.azasset");
+            AZ_Printf("RadianceCascade", "Pass creator registered and templates loaded.\n");
+        }
     }
 
     void RadianceCascadeSystemComponent::Deactivate()

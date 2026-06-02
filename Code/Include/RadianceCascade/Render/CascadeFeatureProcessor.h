@@ -4,6 +4,8 @@
 #include <Atom/RPI.Public/Image/StreamingImage.h>
 #include <AzCore/Math/Transform.h>
 
+namespace AZ::RPI { class RenderPipeline; }
+
 namespace RadianceCascade
 {
     class CascadeFeatureProcessor final : public RadianceCascadeFeatureProcessorInterface
@@ -19,6 +21,7 @@ namespace RadianceCascade
         void Deactivate() override;
         void Simulate(const FeatureProcessor::SimulatePacket& packet) override;
         void Render(const FeatureProcessor::RenderPacket& packet) override;
+        void AddRenderPasses(AZ::RPI::RenderPipeline* renderPipeline) override;
 
         AZ::Data::Instance<AZ::RPI::Image> GetProbeSHBuffer(uint32_t cascadeLevel) const override;
         AZ::Data::Instance<AZ::RPI::Image> GetProbeOctahedralMap() const override;
@@ -48,7 +51,5 @@ namespace RadianceCascade
 
         AZStd::array<uint32_t, MaxCascadeLevels> m_activeProbes = {};
         bool m_historyValid = false;
-
-        uint64_t m_frameCount = 0;
     };
 }

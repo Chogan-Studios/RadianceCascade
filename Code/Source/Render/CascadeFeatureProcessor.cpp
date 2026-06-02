@@ -4,6 +4,11 @@
 #include <AzCore/Math/MathUtils.h>
 #include <AzCore/Debug/Trace.h>
 
+#include <Atom/RPI.Public/RenderPipeline.h>
+#include <Atom/RPI.Public/Pass/PassFilter.h>
+#include <Atom/RPI.Public/Pass/PassSystemInterface.h>
+#include <Atom/RPI.Reflect/Pass/PassRequest.h>
+
 namespace RadianceCascade
 {
     AZ_CVAR(int32_t, r_radianceCascade_mode, 0, nullptr, AZ::ConsoleFunctorFlags::Null,
@@ -20,7 +25,6 @@ namespace RadianceCascade
     void CascadeFeatureProcessor::Activate()
     {
         m_historyValid = false;
-        m_frameCount = 0;
     }
 
     void CascadeFeatureProcessor::Deactivate()
@@ -39,16 +43,49 @@ namespace RadianceCascade
         if (m_resetRequested) { m_historyValid = false; m_resetRequested = false; }
         UpdateClipmap();
         ScheduleProbeUpdates();
-
-        // Print every 60 frames to prove the FP is alive
-        if (m_frameCount % 60 == 0)
-            AZ_Printf("RadianceCascade", "Frame %llu\n", m_frameCount);
-        ++m_frameCount;
     }
 
     void CascadeFeatureProcessor::Render(const FeatureProcessor::RenderPacket& packet)
     {
         AZ_UNUSED(packet);
+    }
+
+    // -------------------------------------------------------------------------
+    // THE MISSING HOOK – called by the scene whenever a pipeline is built
+    // -------------------------------------------------------------------------
+    void CascadeFeatureProcessor::AddRenderPasses(AZ::RPI::RenderPipeline* renderPipeline)
+    {
+        AZ_Printf("RadianceCascade", "AddRenderPasses called!\n");
+
+        // Only inject into pipelines that have a DepthPrePass
+        AZ::RPI::PassFilter depthFilter =
+            AZ::RPI::PassFilter::CreateWithPassName(AZ::Name("DepthPrePass"), renderPipeline);
+        if (!AZ::RPI::PassSystemInterface::Get()->FindFirstPass(depthFilter))
+            return;
+
+        // Avoid double‑injection
+        AZ::RPI::PassFilter alreadyInjected =
+            AZ::RPI::PassFilter::CreateWithPassName(AZ::Name("CascadeInjectPass"), renderPipeline);
+        if (AZ::RPI::PassSystemInterface::Get()->FindFirstPass(alreadyInjected))
+            return;
+
+        // Build the inject pass request
+        AZ::RPI::PassRequest injectRequest;
+        injectRequest.m_passName     = "CascadeInjectPass";
+        injectRequest.m_templateName = "CascadeInjectPassTemplate";
+
+        // Create the pass from the request
+        AZ::RPI::Ptr<AZ::RPI::Pass> newPass =
+            AZ::RPI::PassSystemInterface::Get()->CreatePassFromRequest(&injectRequest);
+        if (!newPass)
+        {
+            AZ_Error("CascadeFeatureProcessor", false, "Failed to create CascadeInjectPass.");
+            return;
+        }
+
+        // Insert after DepthPrePass
+        renderPipeline->AddPassAfter(newPass, AZ::Name("DepthPrePass"));
+        AZ_Printf("RadianceCascade", "CascadeInjectPass inserted into pipeline.\n");
     }
 
     void CascadeFeatureProcessor::AllocateProbeBuffers() {}

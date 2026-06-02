@@ -38,7 +38,7 @@
             "PassData": {
                 "$type": "ComputePassData",
                 "ShaderAsset": {
-                    "FilePath": "Shaders/Inject/CascadeInject_Software.azshader"
+                    "FilePath": "Shaders/Inject/CascadeInject_Software.shader"
                 },
                 "ThreadCountX": 32,
                 "ThreadCountY": 32,
