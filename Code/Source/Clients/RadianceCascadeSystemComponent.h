@@ -1,6 +1,5 @@
 #pragma once
 #include <AzCore/Component/Component.h>
-#include <Atom/RPI.Public/Pass/PassSystemInterface.h>
 
 namespace RadianceCascade
 {
@@ -16,9 +15,5 @@ namespace RadianceCascade
 
         void Activate() override;
         void Deactivate() override;
-
-    private:
-        void LoadPassTemplateMappings();
-        AZ::RPI::PassSystemInterface::OnReadyLoadTemplatesEvent::Handler m_loadTemplatesHandler;
     };
 }

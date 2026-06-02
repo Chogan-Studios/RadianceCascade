@@ -2,46 +2,25 @@
 
 #include <AzCore/Console/Console.h>
 #include <AzCore/Math/MathUtils.h>
-#include <AzCore/Serialization/SerializeContext.h>
-
-#include <Atom/RPI.Public/Pass/PassFilter.h>
-#include <Atom/RPI.Public/Pass/PassSystemInterface.h>
-#include <Atom/RPI.Public/RenderPipeline.h>
-#include <Atom/RPI.Public/RPISystemInterface.h>
-#include <Atom/RPI.Public/Scene.h>
-#include <Atom/RPI.Reflect/Pass/PassRequest.h>
+#include <AzCore/Debug/Trace.h>
 
 namespace RadianceCascade
 {
-    // =====================================================================
-    // CVars
-    // =====================================================================
-
     AZ_CVAR(int32_t, r_radianceCascade_mode, 0, nullptr, AZ::ConsoleFunctorFlags::Null,
         "0 = Software injection, 1 = Hardware Ray Tracing");
     AZ_CVAR(float, r_radianceCascade_temporalWeight, 0.08f, nullptr, AZ::ConsoleFunctorFlags::Null,
         "Base temporal blend weight for probe accumulation");
 
-    // =====================================================================
-    // Reflection
-    // =====================================================================
-
     void CascadeFeatureProcessor::Reflect(AZ::ReflectContext* context)
     {
         if (auto* serialize = azrtti_cast<AZ::SerializeContext*>(context))
-        {
-            serialize->Class<CascadeFeatureProcessor, AZ::RPI::FeatureProcessor>()
-                ->Version(0);
-        }
+            serialize->Class<CascadeFeatureProcessor, AZ::RPI::FeatureProcessor>()->Version(0);
     }
-
-    // =====================================================================
-    // FeatureProcessor lifecycle
-    // =====================================================================
 
     void CascadeFeatureProcessor::Activate()
     {
         m_historyValid = false;
+        m_frameCount = 0;
     }
 
     void CascadeFeatureProcessor::Deactivate()
@@ -57,15 +36,14 @@ namespace RadianceCascade
         AZ_UNUSED(packet);
         m_injectionModeCVar = static_cast<int32_t>(r_radianceCascade_mode);
         m_temporalBlendWeight = r_radianceCascade_temporalWeight;
-
-        if (m_resetRequested)
-        {
-            m_historyValid = false;
-            m_resetRequested = false;
-        }
-
+        if (m_resetRequested) { m_historyValid = false; m_resetRequested = false; }
         UpdateClipmap();
         ScheduleProbeUpdates();
+
+        // Print every 60 frames to prove the FP is alive
+        if (m_frameCount % 60 == 0)
+            AZ_Printf("RadianceCascade", "Frame %llu\n", m_frameCount);
+        ++m_frameCount;
     }
 
     void CascadeFeatureProcessor::Render(const FeatureProcessor::RenderPacket& packet)
@@ -73,14 +51,7 @@ namespace RadianceCascade
         AZ_UNUSED(packet);
     }
 
-    // =====================================================================
-    // Probe buffer / clipmap bookkeeping
-    // =====================================================================
-
-    void CascadeFeatureProcessor::AllocateProbeBuffers()
-    {
-    }
-
+    void CascadeFeatureProcessor::AllocateProbeBuffers() {}
     void CascadeFeatureProcessor::UpdateClipmap()
     {
         m_clipmapOrigins[0] = AZ::Vector3(0.0f);
@@ -91,44 +62,21 @@ namespace RadianceCascade
             m_clipmapOrigins[i] = m_clipmapOrigins[0];
         }
     }
-
     void CascadeFeatureProcessor::ScheduleProbeUpdates()
     {
         for (uint32_t i = 0; i < MaxCascadeLevels; ++i)
             m_activeProbes[i] = MaxProbesPerLevel[i];
     }
 
-    // =====================================================================
-    // Interface accessors
-    // =====================================================================
-
     AZ::Data::Instance<AZ::RPI::Image> CascadeFeatureProcessor::GetProbeSHBuffer(uint32_t cascadeLevel) const
-    {
-        return cascadeLevel < MaxCascadeLevels ? m_probeSH[cascadeLevel] : AZ::Data::Instance<AZ::RPI::Image>();
-    }
-
+    { return cascadeLevel < MaxCascadeLevels ? m_probeSH[cascadeLevel] : AZ::Data::Instance<AZ::RPI::Image>(); }
     AZ::Data::Instance<AZ::RPI::Image> CascadeFeatureProcessor::GetProbeOctahedralMap() const
-    {
-        return m_probeOctahedral;
-    }
-
+    { return m_probeOctahedral; }
     const AZStd::array<uint32_t, MaxCascadeLevels>& CascadeFeatureProcessor::GetActiveProbeCounts() const
-    {
-        return m_activeProbes;
-    }
-
+    { return m_activeProbes; }
     InjectionMode CascadeFeatureProcessor::GetInjectionMode() const
-    {
-        return static_cast<InjectionMode>(m_injectionModeCVar);
-    }
-
-    void CascadeFeatureProcessor::ResetAllProbes()
-    {
-        m_resetRequested = true;
-    }
-
+    { return static_cast<InjectionMode>(m_injectionModeCVar); }
+    void CascadeFeatureProcessor::ResetAllProbes() { m_resetRequested = true; }
     void CascadeFeatureProcessor::SetCameraTransform(const AZ::Transform& worldTransform)
-    {
-        m_cameraTransform = worldTransform;
-    }
+    { m_cameraTransform = worldTransform; }
 }

@@ -3,10 +3,10 @@
 ShaderResourceGroup PassSrg : SRG_PerPass
 {
     RWTexture2D<float4> m_outputRW;
-};
+}
 
 [numthreads(8, 8, 1)]
 void MainCS(uint3 id : SV_DispatchThreadID)
 {
-    PassSrg::m_outputRW[id.xy] = float4(0.0, 1.0, 0.0, 1.0);
+    PassSrg::m_outputRW[id.xy] = float4(0.0, 1.0, 0.0, 1.0); // solid green
 }
