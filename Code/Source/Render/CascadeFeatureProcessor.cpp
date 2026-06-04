@@ -40,8 +40,9 @@ namespace RadianceCascade
     void CascadeFeatureProcessor::Simulate(const FeatureProcessor::SimulatePacket& packet)
     {
         AZ_UNUSED(packet);
-        m_injectionModeCVar = static_cast<int32_t>(r_radianceCascade_mode);
-        m_temporalBlendWeight = r_radianceCascade_temporalWeight;
+        // Use config values (already synced from component)
+        m_injectionModeCVar = static_cast<int32_t>(m_config.m_injectionMode);
+        m_temporalBlendWeight = m_config.m_temporalWeight;
         if (m_resetRequested) { m_historyValid = false; m_resetRequested = false; }
         UpdateClipmap();
         ScheduleProbeUpdates();
@@ -56,13 +57,11 @@ namespace RadianceCascade
     {
         auto* passSystem = AZ::RPI::PassSystemInterface::Get();
 
-        // Only inject into pipelines that have a DepthPrePass
         AZ::RPI::PassFilter depthFilter =
             AZ::RPI::PassFilter::CreateWithPassName(AZ::Name("DepthPrePass"), renderPipeline);
         if (!passSystem->FindFirstPass(depthFilter))
             return;
 
-        // Avoid double injection
         AZ::RPI::PassFilter alreadyInjected =
             AZ::RPI::PassFilter::CreateWithPassName(AZ::Name("CascadeInjectPass"), renderPipeline);
         if (passSystem->FindFirstPass(alreadyInjected))
@@ -96,17 +95,29 @@ namespace RadianceCascade
         }
     }
 
+    void CascadeFeatureProcessor::SetConfiguration(const RadianceCascadeComponentConfig& config)
+    {
+        m_config = config;
+        m_injectionModeCVar = static_cast<int32_t>(config.m_injectionMode);
+        m_temporalBlendWeight = config.m_temporalWeight;
+        AZ_Printf("RadianceCascade", "Configuration updated: mode=%d spacing=%.2f volume=[%.1f, %.1f, %.1f]\n",
+            m_injectionModeCVar, config.m_probeSpacing, config.m_volumeSize.GetX(), config.m_volumeSize.GetY(), config.m_volumeSize.GetZ());
+    }
+
     void CascadeFeatureProcessor::AllocateProbeBuffers() {}
+
     void CascadeFeatureProcessor::UpdateClipmap()
     {
+        float spacing = m_config.m_probeSpacing > 0.0f ? m_config.m_probeSpacing : 1.0f;
         m_clipmapOrigins[0] = AZ::Vector3(0.0f);
-        m_clipmapCellSizes[0] = AZ::Vector3(1.0f);
+        m_clipmapCellSizes[0] = AZ::Vector3(spacing);
         for (uint32_t i = 1; i < MaxCascadeLevels; ++i)
         {
             m_clipmapCellSizes[i] = m_clipmapCellSizes[0] * static_cast<float>(1 << i);
             m_clipmapOrigins[i] = m_clipmapOrigins[0];
         }
     }
+
     void CascadeFeatureProcessor::ScheduleProbeUpdates()
     {
         for (uint32_t i = 0; i < MaxCascadeLevels; ++i)

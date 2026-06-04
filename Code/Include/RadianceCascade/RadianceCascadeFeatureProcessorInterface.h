@@ -1,10 +1,12 @@
 #pragma once
+
 #include <AzCore/base.h>
 #include <Atom/RPI.Public/FeatureProcessor.h>
 #include <Atom/RPI.Reflect/Image/Image.h>
 #include <AzCore/std/containers/array.h>
 #include <AzCore/Math/Transform.h>
 #include <RadianceCascade/Render/CascadeCommon.h>
+#include <Components/RadianceCascadeComponentConfig.h>
 
 namespace RadianceCascade
 {
@@ -19,5 +21,8 @@ namespace RadianceCascade
         virtual InjectionMode GetInjectionMode() const = 0;
         virtual void ResetAllProbes() = 0;
         virtual void SetCameraTransform(const AZ::Transform& worldTransform) = 0;
+
+        // Apply a new configuration from the component
+        virtual void SetConfiguration(const RadianceCascadeComponentConfig& config) = 0;
     };
 }

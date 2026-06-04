@@ -1,6 +1,5 @@
 #pragma once
 #include <AzCore/Component/Component.h>
-#include <Components/RadianceCascadeComponentController.h>
 #include <Components/RadianceCascadeComponentConfig.h>
 
 namespace RadianceCascade
@@ -18,7 +17,6 @@ namespace RadianceCascade
         void Deactivate() override;
 
     private:
-        RadianceCascadeComponentController m_controller;
         RadianceCascadeComponentConfig m_configuration;
     };
 }

@@ -8,5 +8,7 @@ ShaderResourceGroup PassSrg : SRG_PerPass
 [numthreads(8, 8, 1)]
 void MainCS(uint3 id : SV_DispatchThreadID)
 {
-    PassSrg::m_outputRW[id.xy] = float4(0.0, 1.0, 0.0, 1.0); // solid green
+    float2 uv = (float2(id.xy) + 0.5) / float2(256.0, 256.0);
+    // Bright, saturated gradient: R from 0 to 5, G from 0 to 3, B a constant 1
+    PassSrg::m_outputRW[id.xy] = float4(uv.x * 5.0, uv.y * 3.0, 1.0, 1.0);
 }

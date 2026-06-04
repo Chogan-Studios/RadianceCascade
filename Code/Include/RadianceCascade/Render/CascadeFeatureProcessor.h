@@ -29,14 +29,15 @@ namespace RadianceCascade
         InjectionMode GetInjectionMode() const override;
         void ResetAllProbes() override;
         void SetCameraTransform(const AZ::Transform& worldTransform) override;
+        void SetConfiguration(const RadianceCascadeComponentConfig& config) override;
 
     private:
         void AllocateProbeBuffers();
         void UpdateClipmap();
         void ScheduleProbeUpdates();
 
-        int32_t m_injectionModeCVar = 0;
-        float m_temporalBlendWeight = 0.08f;
+        int32_t m_injectionModeCVar = 0;          // kept for backward compatibility, but overridden by config
+        float m_temporalBlendWeight = 0.08f;      // overridden by config
         uint32_t m_probesPerFrame = 64;
         bool m_resetRequested = false;
 
@@ -51,5 +52,7 @@ namespace RadianceCascade
 
         AZStd::array<uint32_t, MaxCascadeLevels> m_activeProbes = {};
         bool m_historyValid = false;
+
+        RadianceCascadeComponentConfig m_config;
     };
 }

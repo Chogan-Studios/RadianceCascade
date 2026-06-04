@@ -6,7 +6,7 @@ namespace RadianceCascade
 {
     void EditorRadianceCascadeComponent::Reflect(AZ::ReflectContext* context)
     {
-        RadianceCascadeComponentController::Reflect(context);   // register controller
+        RadianceCascadeComponentController::Reflect(context);
         BaseClass::Reflect(context);
 
         if (auto* serialize = azrtti_cast<AZ::SerializeContext*>(context))
@@ -23,8 +23,6 @@ namespace RadianceCascade
             }
         }
     }
-
-    EditorRadianceCascadeComponent::EditorRadianceCascadeComponent() = default;
 
     EditorRadianceCascadeComponent::EditorRadianceCascadeComponent(const RadianceCascadeComponentConfig& config)
         : BaseClass(config)

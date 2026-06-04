@@ -1,6 +1,8 @@
 #include "RadianceCascadeComponent.h"
 #include <AzCore/RTTI/BehaviorContext.h>
 #include <AzCore/Serialization/SerializeContext.h>
+#include <Atom/RPI.Public/Scene.h>
+#include <RadianceCascade/RadianceCascadeFeatureProcessorInterface.h>
 
 namespace RadianceCascade
 {
@@ -30,6 +32,15 @@ namespace RadianceCascade
 
     void RadianceCascadeComponent::Activate()
     {
+        auto* scene = AZ::RPI::Scene::GetSceneForEntityId(GetEntityId());
+        if (scene)
+        {
+            auto* fp = scene->GetFeatureProcessor<RadianceCascadeFeatureProcessorInterface>();
+            if (fp)
+            {
+                fp->SetConfiguration(m_configuration);
+            }
+        }
     }
 
     void RadianceCascadeComponent::Deactivate()
