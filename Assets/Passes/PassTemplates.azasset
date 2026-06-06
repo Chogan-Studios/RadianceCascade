@@ -4,10 +4,14 @@
     "ClassName": "AssetAliasesSourceData",
     "ClassData": {
         "AssetPaths": [
-            { "Name": "CascadeInjectPassTemplate", "Path": "Passes/CascadeInjectPassTemplate.pass" },
-            { "Name": "CascadeMergePassTemplate", "Path": "Passes/CascadeMergePassTemplate.pass" },
-            { "Name": "CascadeGISamplePassTemplate", "Path": "Passes/CascadeGISamplePassTemplate.pass" },
-            { "Name": "CascadeReflectionSamplePassTemplate", "Path": "Passes/CascadeReflectionSamplePassTemplate.pass" }
+            {
+                "Name": "CascadeInjectPassTemplate",
+                "Path": "Passes/CascadeInjectPassTemplate.pass"
+            },
+            {
+                "Name": "CascadeInjectProbeSHPassTemplate",
+                "Path": "Passes/CascadeInjectProbeSHPassTemplate.pass"
+            }
         ]
     }
 }

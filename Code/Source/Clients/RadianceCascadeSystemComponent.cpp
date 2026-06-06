@@ -40,7 +40,10 @@ namespace RadianceCascade
         auto* passSystem = AZ::RPI::PassSystemInterface::Get();
         if (passSystem)
         {
+            // Register the one custom pass class – used by both the green diagnostic and the probe injection
             passSystem->AddPassCreator(AZ::Name("CascadeInjectPass"), &CascadeInjectPass::Create);
+
+            // Load both templates (green diagnostic and probe injection)
             passSystem->LoadPassTemplateMappings("Passes/PassTemplates.azasset");
             AZ_Printf("RadianceCascade", "Pass creator registered and templates loaded.\n");
         }

@@ -40,9 +40,8 @@ namespace RadianceCascade
     void CascadeFeatureProcessor::Simulate(const FeatureProcessor::SimulatePacket& packet)
     {
         AZ_UNUSED(packet);
-        // Use config values (already synced from component)
-        m_injectionModeCVar = static_cast<int32_t>(m_config.m_injectionMode);
-        m_temporalBlendWeight = m_config.m_temporalWeight;
+        m_injectionModeCVar = static_cast<int32_t>(r_radianceCascade_mode);
+        m_temporalBlendWeight = r_radianceCascade_temporalWeight;
         if (m_resetRequested) { m_historyValid = false; m_resetRequested = false; }
         UpdateClipmap();
         ScheduleProbeUpdates();
@@ -62,36 +61,93 @@ namespace RadianceCascade
         if (!passSystem->FindFirstPass(depthFilter))
             return;
 
-        AZ::RPI::PassFilter alreadyInjected =
+        // ---------- Green diagnostic pass (2D) ----------
+        AZ::RPI::PassFilter greenAlreadyInjected =
             AZ::RPI::PassFilter::CreateWithPassName(AZ::Name("CascadeInjectPass"), renderPipeline);
-        if (passSystem->FindFirstPass(alreadyInjected))
-            return;
-
-        // Load the compiled pass template and register it (idempotent)
-        AZ::Data::Asset<AZ::RPI::PassAsset> passAsset =
-            AZ::RPI::AssetUtils::LoadAssetByProductPath<AZ::RPI::PassAsset>(
-                "Passes/CascadeInjectPassTemplate.pass",
-                AZ::RPI::AssetUtils::TraceLevel::Warning);
-        if (passAsset.IsReady())
+        if (!passSystem->FindFirstPass(greenAlreadyInjected))
         {
-            const auto& templateOwner = passAsset->GetPassTemplate();
-            if (templateOwner)
+            AZ::Data::Asset<AZ::RPI::PassAsset> greenAsset =
+                AZ::RPI::AssetUtils::LoadAssetByProductPath<AZ::RPI::PassAsset>(
+                    "Passes/CascadeInjectPassTemplate.pass",
+                    AZ::RPI::AssetUtils::TraceLevel::Warning);
+            if (greenAsset.IsReady())
             {
-                passSystem->AddPassTemplate(
-                    AZ::Name(templateOwner->m_name),
-                    AZStd::make_shared<AZ::RPI::PassTemplate>(*templateOwner));
+                const auto& templateOwner = greenAsset->GetPassTemplate();
+                if (templateOwner)
+                {
+                    passSystem->AddPassTemplate(
+                        AZ::Name(templateOwner->m_name),
+                        AZStd::make_shared<AZ::RPI::PassTemplate>(*templateOwner));
+                }
+            }
+
+            AZ::RPI::PassRequest greenRequest;
+            greenRequest.m_passName     = "CascadeInjectPass";
+            greenRequest.m_templateName = "CascadeInjectPassTemplate";
+
+            AZ::RPI::Ptr<AZ::RPI::Pass> greenPass = passSystem->CreatePassFromRequest(&greenRequest);
+            if (greenPass)
+            {
+                renderPipeline->AddPassAfter(greenPass, AZ::Name("DepthPrePass"));
+                AZ_Printf("RadianceCascade", "Green diagnostic pass inserted after DepthPrePass.\n");
             }
         }
 
-        AZ::RPI::PassRequest injectRequest;
-        injectRequest.m_passName     = "CascadeInjectPass";
-        injectRequest.m_templateName = "CascadeInjectPassTemplate";
-
-        AZ::RPI::Ptr<AZ::RPI::Pass> newPass = passSystem->CreatePassFromRequest(&injectRequest);
-        if (newPass)
+        // ---------- Probe SH injection pass (3D) ----------
+        AZ::RPI::PassFilter probeAlreadyInjected =
+            AZ::RPI::PassFilter::CreateWithPassName(AZ::Name("CascadeProbeSHPass"), renderPipeline);
+        if (!passSystem->FindFirstPass(probeAlreadyInjected))
         {
-            renderPipeline->AddPassAfter(newPass, AZ::Name("DepthPrePass"));
-            AZ_Printf("RadianceCascade", "CascadeInjectPass inserted into pipeline.\n");
+            AZ::Data::Asset<AZ::RPI::PassAsset> probeAsset =
+                AZ::RPI::AssetUtils::LoadAssetByProductPath<AZ::RPI::PassAsset>(
+                    "Passes/CascadeInjectProbeSHPassTemplate.pass",
+                    AZ::RPI::AssetUtils::TraceLevel::Warning);
+            if (probeAsset.IsReady())
+            {
+                const auto& templateOwner = probeAsset->GetPassTemplate();
+                if (templateOwner)
+                {
+                    passSystem->AddPassTemplate(
+                        AZ::Name(templateOwner->m_name),
+                        AZStd::make_shared<AZ::RPI::PassTemplate>(*templateOwner));
+                }
+            }
+
+            AZ::RPI::PassFilter forwardFilter =
+                AZ::RPI::PassFilter::CreateWithPassName(AZ::Name("Forward"), renderPipeline);
+            if (passSystem->FindFirstPass(forwardFilter))
+            {
+                AZ::RPI::PassRequest probeRequest;
+                probeRequest.m_passName     = "CascadeProbeSHPass";
+                probeRequest.m_templateName = "CascadeInjectProbeSHPassTemplate";
+                // do NOT set m_connections here – we'll use ChangeConnection after insertion
+
+                AZ::RPI::Ptr<AZ::RPI::Pass> probePass = passSystem->CreatePassFromRequest(&probeRequest);
+                if (probePass)
+                {
+                    if (renderPipeline->AddPassAfter(probePass, AZ::Name("ForwardSubsurface")))
+                    {
+                        // Now the pass has a parent and can see its siblings.
+                        // Wire the GBuffer inputs via the engine's runtime mutator.
+                        probePass->ChangeConnection(AZ::Name("AlbedoInput"),
+                            AZ::Name("Forward"), AZ::Name("AlbedoOutput"), renderPipeline);
+                        probePass->ChangeConnection(AZ::Name("NormalInput"),
+                            AZ::Name("Forward"), AZ::Name("NormalOutput"), renderPipeline);
+                        probePass->ChangeConnection(AZ::Name("DepthStencilInput"),
+                            AZ::Name("Forward"), AZ::Name("DepthStencilInputOutput"), renderPipeline);
+
+                        AZ_Printf("RadianceCascade", "Probe SH injection pass inserted inside OpaquePass after ForwardSubsurface; GBuffer connections set via ChangeConnection.\n");
+                    }
+                    else
+                    {
+                        AZ_Error("RadianceCascade", false, "AddPassAfter(ForwardSubsurface) failed.");
+                    }
+                }
+                else
+                {
+                    AZ_Error("RadianceCascade", false, "Failed to create CascadeProbeSHPass from request.");
+                }
+            }
         }
     }
 
@@ -100,12 +156,9 @@ namespace RadianceCascade
         m_config = config;
         m_injectionModeCVar = static_cast<int32_t>(config.m_injectionMode);
         m_temporalBlendWeight = config.m_temporalWeight;
-        AZ_Printf("RadianceCascade", "Configuration updated: mode=%d spacing=%.2f volume=[%.1f, %.1f, %.1f]\n",
-            m_injectionModeCVar, config.m_probeSpacing, config.m_volumeSize.GetX(), config.m_volumeSize.GetY(), config.m_volumeSize.GetZ());
     }
 
     void CascadeFeatureProcessor::AllocateProbeBuffers() {}
-
     void CascadeFeatureProcessor::UpdateClipmap()
     {
         float spacing = m_config.m_probeSpacing > 0.0f ? m_config.m_probeSpacing : 1.0f;
@@ -117,7 +170,6 @@ namespace RadianceCascade
             m_clipmapOrigins[i] = m_clipmapOrigins[0];
         }
     }
-
     void CascadeFeatureProcessor::ScheduleProbeUpdates()
     {
         for (uint32_t i = 0; i < MaxCascadeLevels; ++i)
