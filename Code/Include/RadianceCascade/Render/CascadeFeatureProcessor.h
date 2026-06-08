@@ -3,6 +3,7 @@
 #include <RadianceCascade/RadianceCascadeFeatureProcessorInterface.h>
 #include <Atom/RPI.Public/Image/StreamingImage.h>
 #include <AzCore/Math/Transform.h>
+#include <AzCore/Math/Matrix4x4.h>
 
 namespace AZ::RPI { class RenderPipeline; }
 
@@ -35,9 +36,10 @@ namespace RadianceCascade
         void AllocateProbeBuffers();
         void UpdateClipmap();
         void ScheduleProbeUpdates();
+        void UpdateViewProjectionMatrix();
 
-        int32_t m_injectionModeCVar = 0;          // kept for backward compatibility, but overridden by config
-        float m_temporalBlendWeight = 0.08f;      // overridden by config
+        int32_t m_injectionModeCVar = 0;
+        float m_temporalBlendWeight = 0.08f;
         uint32_t m_probesPerFrame = 64;
         bool m_resetRequested = false;
 
@@ -54,5 +56,12 @@ namespace RadianceCascade
         bool m_historyValid = false;
 
         RadianceCascadeComponentConfig m_config;
+
+        // Unused while constants are hardcoded, but kept for future SRG binding.
+        AZ::Matrix4x4 m_viewProjMatrix = AZ::Matrix4x4::CreateIdentity();
+        AZ::Vector3   m_sunDirection   = AZ::Vector3(0.5f, -1.0f, 0.3f).GetNormalized();
+        AZ::Vector3   m_sunColor       = AZ::Vector3(1.0f, 0.95f, 0.8f);
+        float         m_sunIntensity    = 4.0f;
+        float         m_ambientIntensity = 0.1f;
     };
 }

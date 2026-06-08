@@ -1,0 +1,34 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "CascadeCopyHistoryPassTemplate",
+            "PassClass": "ComputePass",
+            "Slots": [
+                {
+                    "Name": "SourceInput",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_source"
+                },
+                {
+                    "Name": "DestOutput",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_dest"
+                }
+            ],
+            "PassData": {
+                "$type": "ComputePassData",
+                "ShaderAsset": {
+                    "FilePath": "Shaders/Inject/CascadeCopyHistory.shader"
+                },
+                "ThreadCountX": 144,
+                "ThreadCountY": 16,
+                "ThreadCountZ": 16
+            }
+        }
+    }
+}

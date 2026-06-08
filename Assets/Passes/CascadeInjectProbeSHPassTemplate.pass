@@ -8,29 +8,16 @@
             "PassClass": "CascadeInjectPass",
             "Slots": [
                 {
-                    "Name": "AlbedoInput",
-                    "SlotType": "Input",
-                    "ScopeAttachmentUsage": "Shader",
-                    "ShaderInputName": "m_gbuffer0"
-                },
-                {
-                    "Name": "NormalInput",
-                    "SlotType": "Input",
-                    "ScopeAttachmentUsage": "Shader",
-                    "ShaderInputName": "m_gbuffer1"
-                },
-                {
-                    "Name": "DepthStencilInput",
-                    "SlotType": "Input",
-                    "ScopeAttachmentUsage": "Shader",
-                    "ShaderInputName": "m_depth",
-                    "ImageViewDesc": { "AspectFlags": ["Depth"] }
-                },
-                {
                     "Name": "ProbeSHOutput",
                     "SlotType": "Output",
                     "ScopeAttachmentUsage": "Shader",
                     "ShaderInputName": "m_probeSH"
+                },
+                {
+                    "Name": "ProbeSHHistoryInput",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_probeSHHistory"
                 }
             ],
             "ImageAttachments": [
@@ -42,12 +29,26 @@
                         "Size": { "Width": 144, "Height": 16, "Depth": 16 },
                         "SharedQueueMask": "Graphics"
                     }
+                },
+                {
+                    "Name": "ProbeSHHistoryImage",
+                    "ImageDescriptor": {
+                        "Format": "R32G32B32A32_FLOAT",
+                        "Dimension": 3,
+                        "Size": { "Width": 144, "Height": 16, "Depth": 16 },
+                        "BindFlags": ["ShaderReadWrite"],
+                        "SharedQueueMask": "Graphics"
+                    }
                 }
             ],
             "Connections": [
                 {
                     "LocalSlot": "ProbeSHOutput",
                     "AttachmentRef": { "Pass": "This", "Attachment": "ProbeSHImage" }
+                },
+                {
+                    "LocalSlot": "ProbeSHHistoryInput",
+                    "AttachmentRef": { "Pass": "This", "Attachment": "ProbeSHHistoryImage" }
                 }
             ],
             "PassData": {

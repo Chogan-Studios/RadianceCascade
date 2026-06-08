@@ -11,6 +11,10 @@
             {
                 "Name": "CascadeInjectProbeSHPassTemplate",
                 "Path": "Passes/CascadeInjectProbeSHPassTemplate.pass"
+            },
+            {
+                "Name": "CascadeCopyHistoryPassTemplate",
+                "Path": "Passes/CascadeCopyHistoryPassTemplate.pass"
             }
         ]
     }

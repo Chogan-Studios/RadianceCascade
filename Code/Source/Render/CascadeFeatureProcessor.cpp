@@ -42,8 +42,15 @@ namespace RadianceCascade
         AZ_UNUSED(packet);
         m_injectionModeCVar = static_cast<int32_t>(r_radianceCascade_mode);
         m_temporalBlendWeight = r_radianceCascade_temporalWeight;
-        if (m_resetRequested) { m_historyValid = false; m_resetRequested = false; }
+
+        if (m_resetRequested)
+        {
+            m_historyValid = false;
+            m_resetRequested = false;
+        }
+
         UpdateClipmap();
+        UpdateViewProjectionMatrix();
         ScheduleProbeUpdates();
     }
 
@@ -61,7 +68,7 @@ namespace RadianceCascade
         if (!passSystem->FindFirstPass(depthFilter))
             return;
 
-        // ---------- Green diagnostic pass (2D) ----------
+        // ---------- Green diagnostic pass ----------
         AZ::RPI::PassFilter greenAlreadyInjected =
             AZ::RPI::PassFilter::CreateWithPassName(AZ::Name("CascadeInjectPass"), renderPipeline);
         if (!passSystem->FindFirstPass(greenAlreadyInjected))
@@ -93,7 +100,7 @@ namespace RadianceCascade
             }
         }
 
-        // ---------- Probe SH injection pass (3D) ----------
+        // ---------- Probe SH injection pass (synthetic lighting, no GBuffer) ----------
         AZ::RPI::PassFilter probeAlreadyInjected =
             AZ::RPI::PassFilter::CreateWithPassName(AZ::Name("CascadeProbeSHPass"), renderPipeline);
         if (!passSystem->FindFirstPass(probeAlreadyInjected))
@@ -120,23 +127,14 @@ namespace RadianceCascade
                 AZ::RPI::PassRequest probeRequest;
                 probeRequest.m_passName     = "CascadeProbeSHPass";
                 probeRequest.m_templateName = "CascadeInjectProbeSHPassTemplate";
-                // do NOT set m_connections here – we'll use ChangeConnection after insertion
 
                 AZ::RPI::Ptr<AZ::RPI::Pass> probePass = passSystem->CreatePassFromRequest(&probeRequest);
                 if (probePass)
                 {
                     if (renderPipeline->AddPassAfter(probePass, AZ::Name("ForwardSubsurface")))
                     {
-                        // Now the pass has a parent and can see its siblings.
-                        // Wire the GBuffer inputs via the engine's runtime mutator.
-                        probePass->ChangeConnection(AZ::Name("AlbedoInput"),
-                            AZ::Name("Forward"), AZ::Name("AlbedoOutput"), renderPipeline);
-                        probePass->ChangeConnection(AZ::Name("NormalInput"),
-                            AZ::Name("Forward"), AZ::Name("NormalOutput"), renderPipeline);
-                        probePass->ChangeConnection(AZ::Name("DepthStencilInput"),
-                            AZ::Name("Forward"), AZ::Name("DepthStencilInputOutput"), renderPipeline);
-
-                        AZ_Printf("RadianceCascade", "Probe SH injection pass inserted inside OpaquePass after ForwardSubsurface; GBuffer connections set via ChangeConnection.\n");
+                        AZ_Printf("RadianceCascade",
+                            "Probe SH injection pass inserted (synthetic lighting).\n");
                     }
                     else
                     {
@@ -151,17 +149,11 @@ namespace RadianceCascade
         }
     }
 
-    void CascadeFeatureProcessor::SetConfiguration(const RadianceCascadeComponentConfig& config)
-    {
-        m_config = config;
-        m_injectionModeCVar = static_cast<int32_t>(config.m_injectionMode);
-        m_temporalBlendWeight = config.m_temporalWeight;
-    }
-
     void CascadeFeatureProcessor::AllocateProbeBuffers() {}
+
     void CascadeFeatureProcessor::UpdateClipmap()
     {
-        float spacing = m_config.m_probeSpacing > 0.0f ? m_config.m_probeSpacing : 1.0f;
+        float spacing = 1.0f;
         m_clipmapOrigins[0] = AZ::Vector3(0.0f);
         m_clipmapCellSizes[0] = AZ::Vector3(spacing);
         for (uint32_t i = 1; i < MaxCascadeLevels; ++i)
@@ -170,21 +162,74 @@ namespace RadianceCascade
             m_clipmapOrigins[i] = m_clipmapOrigins[0];
         }
     }
+
     void CascadeFeatureProcessor::ScheduleProbeUpdates()
     {
         for (uint32_t i = 0; i < MaxCascadeLevels; ++i)
             m_activeProbes[i] = MaxProbesPerLevel[i];
     }
 
+    void CascadeFeatureProcessor::UpdateViewProjectionMatrix()
+    {
+        const float fov = AZ::DegToRad(70.0f);
+        const float aspect = 16.0f / 9.0f;
+        const float nearDist = 0.1f;
+        const float farDist = 1000.0f;
+
+        float yScale = 1.0f / tanf(fov * 0.5f);
+        float xScale = yScale / aspect;
+        float fRange = farDist / (farDist - nearDist);
+
+        AZ::Matrix4x4 proj = AZ::Matrix4x4::CreateIdentity();
+        proj.SetRow(0, AZ::Vector4(xScale, 0.0f, 0.0f, 0.0f));
+        proj.SetRow(1, AZ::Vector4(0.0f, yScale, 0.0f, 0.0f));
+        proj.SetRow(2, AZ::Vector4(0.0f, 0.0f, fRange, 1.0f));
+        proj.SetRow(3, AZ::Vector4(0.0f, 0.0f, -nearDist * fRange, 0.0f));
+
+        AZ::Matrix4x4 view = AZ::Matrix4x4::CreateFromTransform(m_cameraTransform).GetInverseFast();
+        m_viewProjMatrix = view * proj;
+    }
+
     AZ::Data::Instance<AZ::RPI::Image> CascadeFeatureProcessor::GetProbeSHBuffer(uint32_t cascadeLevel) const
-    { return cascadeLevel < MaxCascadeLevels ? m_probeSH[cascadeLevel] : AZ::Data::Instance<AZ::RPI::Image>(); }
+    {
+        return (cascadeLevel < MaxCascadeLevels) ? m_probeSH[cascadeLevel]
+                                                 : AZ::Data::Instance<AZ::RPI::Image>();
+    }
+
     AZ::Data::Instance<AZ::RPI::Image> CascadeFeatureProcessor::GetProbeOctahedralMap() const
-    { return m_probeOctahedral; }
+    {
+        return m_probeOctahedral;
+    }
+
     const AZStd::array<uint32_t, MaxCascadeLevels>& CascadeFeatureProcessor::GetActiveProbeCounts() const
-    { return m_activeProbes; }
+    {
+        return m_activeProbes;
+    }
+
     InjectionMode CascadeFeatureProcessor::GetInjectionMode() const
-    { return static_cast<InjectionMode>(m_injectionModeCVar); }
-    void CascadeFeatureProcessor::ResetAllProbes() { m_resetRequested = true; }
+    {
+        return static_cast<InjectionMode>(m_injectionModeCVar);
+    }
+
+    void CascadeFeatureProcessor::ResetAllProbes()
+    {
+        m_resetRequested = true;
+    }
+
     void CascadeFeatureProcessor::SetCameraTransform(const AZ::Transform& worldTransform)
-    { m_cameraTransform = worldTransform; }
+    {
+        m_cameraTransform = worldTransform;
+    }
+
+    void CascadeFeatureProcessor::SetConfiguration(const RadianceCascadeComponentConfig& config)
+    {
+        m_config = config;
+        AZ_Printf("RadianceCascade",
+            "Configuration updated (spacing=%.2f, volume=(%.1f,%.1f,%.1f), mode=%s)",
+            config.m_probeSpacing,
+            static_cast<float>(config.m_volumeSize.GetX()),
+            static_cast<float>(config.m_volumeSize.GetY()),
+            static_cast<float>(config.m_volumeSize.GetZ()),
+            (config.m_injectionMode == InjectionMode::Software ? "Software" : "HWRT"));
+    }
 }
