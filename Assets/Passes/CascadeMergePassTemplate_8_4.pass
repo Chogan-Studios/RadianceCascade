@@ -1,0 +1,36 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "CascadeMergePassTemplate_8_4",
+            "PassClass": "CascadeInjectPass",
+            "Slots": [
+                {
+                    "Name": "FineProbeInput",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_fineProbeSH"
+                },
+                {
+                    "Name": "CoarseProbeInput",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_coarseProbeSH"
+                }
+            ],
+            "ImageAttachments": [],
+            "Connections": [],
+            "PassData": {
+                "$type": "ComputePassData",
+                "ShaderAsset": {
+                    "FilePath": "Shaders/Merge/CascadeMerge_8_4.shader"
+                },
+                "ThreadCountX": 8,
+                "ThreadCountY": 8,
+                "ThreadCountZ": 8
+            }
+        }
+    }
+}

@@ -4,9 +4,11 @@
     "ClassName": "PassTemplateMappingAsset",
     "ClassData": {
         "Mapping": {
-            "CascadeInjectPassTemplate": "Passes/CascadeInjectPassTemplate.pass",
-            "CascadeDebugPassTemplate": "Passes/CascadeDebugPassTemplate.pass",
-            "CascadeMergePassTemplate": "Passes/CascadeMergePassTemplate.pass"
+            "CascadeInjectPassTemplate_C0": "Passes/CascadeInjectPassTemplate_C0.pass",
+            "CascadeInjectPassTemplate_C1": "Passes/CascadeInjectPassTemplate_C1.pass",
+            "CascadeInjectPassTemplate_C2": "Passes/CascadeInjectPassTemplate_C2.pass",
+            "CascadeMergePassTemplate_16_8": "Passes/CascadeMergePassTemplate_16_8.pass",
+            "CascadeMergePassTemplate_8_4": "Passes/CascadeMergePassTemplate_8_4.pass"
         }
     }
 }

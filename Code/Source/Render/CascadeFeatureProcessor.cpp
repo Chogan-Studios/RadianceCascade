@@ -10,6 +10,8 @@
 #include <Atom/RPI.Reflect/Pass/PassRequest.h>
 #include <Atom/RPI.Reflect/Pass/PassAsset.h>
 #include <Atom/RPI.Reflect/Asset/AssetUtils.h>
+#include <Atom/RPI.Public/Image/ImageSystemInterface.h>
+#include <Atom/RPI.Public/Image/AttachmentImagePool.h>
 
 namespace RadianceCascade
 {
@@ -17,6 +19,18 @@ namespace RadianceCascade
         "0 = Software injection, 1 = Hardware Ray Tracing");
     AZ_CVAR(float, r_radianceCascade_temporalWeight, 0.08f, nullptr, AZ::ConsoleFunctorFlags::Null,
         "Base temporal blend weight for probe accumulation");
+
+    // Image sizes for each cascade level (grid size × 9 coefficients)
+    // Level 0: 16³ → 144×16×16   Level 1: 8³ → 72×8×8
+    // Level 2: 4³ → 36×4×4       Level 3: 2³ → 18×2×2   Level 4: 1³ → 9×1×1
+    static const AZ::RHI::Size ProbeImageSizes[MaxCascadeLevels] =
+    {
+        AZ::RHI::Size(144, 16, 16),
+        AZ::RHI::Size( 72,  8,  8),
+        AZ::RHI::Size( 36,  4,  4),
+        AZ::RHI::Size( 18,  2,  2),
+        AZ::RHI::Size(  9,  1,  1)
+    };
 
     void CascadeFeatureProcessor::Reflect(AZ::ReflectContext* context)
     {
@@ -27,6 +41,29 @@ namespace RadianceCascade
     void CascadeFeatureProcessor::Activate()
     {
         m_historyValid = false;
+
+        // Create one persistent 3D image per cascade level.
+        auto* pool = AZ::RPI::ImageSystemInterface::Get()->GetSystemAttachmentPool().get();
+        for (uint32_t level = 0; level < MaxCascadeLevels; ++level)
+        {
+            AZ::RHI::ImageDescriptor desc;
+            desc.m_bindFlags = AZ::RHI::ImageBindFlags::ShaderReadWrite;
+            desc.m_dimension = AZ::RHI::ImageDimension::Image3D;
+            desc.m_size      = ProbeImageSizes[level];
+            desc.m_format    = AZ::RHI::Format::R32G32B32A32_FLOAT;
+            desc.m_arraySize = 1;
+            desc.m_mipLevels = 1;
+
+            AZ::RPI::CreateAttachmentImageRequest req;
+            req.m_imageDescriptor = desc;
+            req.m_imageName       = AZ::Name(AZStd::string::format("CascadeProbeSH_L%u", level));
+            req.m_isUniqueName    = true;
+            req.m_imagePool       = pool;
+
+            m_probeAttachments[level] = AZ::RPI::AttachmentImage::Create(req);
+            AZ_Error("RadianceCascade", m_probeAttachments[level],
+                "Failed to create CascadeProbeSH_L%u", level);
+        }
     }
 
     void CascadeFeatureProcessor::Deactivate()
@@ -35,6 +72,7 @@ namespace RadianceCascade
         m_probeOctahedral = {};
         m_probeHistorySH.fill({});
         m_probeOctahedralHistory = {};
+        m_probeAttachments.fill({});
     }
 
     void CascadeFeatureProcessor::Simulate(const FeatureProcessor::SimulatePacket& packet)
@@ -68,97 +106,106 @@ namespace RadianceCascade
         if (!passSystem->FindFirstPass(depthFilter))
             return;
 
-        // ---------- Probe SH injection pass ----------
-        AZ::RPI::PassFilter probeAlreadyInjected =
-            AZ::RPI::PassFilter::CreateWithPassName(AZ::Name("CascadeProbeSHPass"), renderPipeline);
-        if (!passSystem->FindFirstPass(probeAlreadyInjected))
+        // --------------------------------------------------------------------
+        // Inject passes for cascade levels 0, 1, 2.
+        // --------------------------------------------------------------------
+        struct CascadeInfo
         {
-            AZ::Data::Asset<AZ::RPI::PassAsset> probeAsset =
-                AZ::RPI::AssetUtils::LoadAssetByProductPath<AZ::RPI::PassAsset>(
-                    "Passes/CascadeInjectPassTemplate.pass",
-                    AZ::RPI::AssetUtils::TraceLevel::Warning);
-            if (probeAsset.IsReady())
-            {
-                const auto& templateOwner = probeAsset->GetPassTemplate();
-                if (templateOwner)
-                {
-                    passSystem->AddPassTemplate(
-                        AZ::Name(templateOwner->m_name),
-                        AZStd::make_shared<AZ::RPI::PassTemplate>(*templateOwner));
-                }
-            }
+            const char* assetPath;
+            const char* templateName;
+            const char* passName;
+        };
 
-            AZ::RPI::PassFilter forwardFilter =
-                AZ::RPI::PassFilter::CreateWithPassName(AZ::Name("Forward"), renderPipeline);
-            if (passSystem->FindFirstPass(forwardFilter))
-            {
-                AZ::RPI::PassRequest probeRequest;
-                probeRequest.m_passName     = "CascadeProbeSHPass";
-                probeRequest.m_templateName = "CascadeInjectPassTemplate";
-
-                AZ::RPI::Ptr<AZ::RPI::Pass> probePass = passSystem->CreatePassFromRequest(&probeRequest);
-                if (probePass)
-                {
-                    if (renderPipeline->AddPassAfter(probePass, AZ::Name("ForwardSubsurface")))
-                    {
-                        AZ_Printf("RadianceCascade", "Probe SH injection pass inserted.\n");
-                    }
-                    else
-                    {
-                        AZ_Error("RadianceCascade", false, "AddPassAfter(ForwardSubsurface) failed.");
-                    }
-                }
-                else
-                {
-                    AZ_Error("RadianceCascade", false, "Failed to create CascadeProbeSHPass from request.");
-                }
-            }
-        }
-
-        // ---------- Cascade merge pass ----------
-        AZ::RPI::PassFilter mergeAlreadyInjected =
-            AZ::RPI::PassFilter::CreateWithPassName(AZ::Name("CascadeMergePass"), renderPipeline);
-        if (!passSystem->FindFirstPass(mergeAlreadyInjected))
+        const CascadeInfo cascades[] =
         {
-            AZ::Data::Asset<AZ::RPI::PassAsset> mergeAsset =
+            { "Passes/CascadeInjectPassTemplate_C0.pass", "CascadeInjectPassTemplate_C0", "CascadeProbeSHPass_C0" },
+            { "Passes/CascadeInjectPassTemplate_C1.pass", "CascadeInjectPassTemplate_C1", "CascadeProbeSHPass_C1" },
+            { "Passes/CascadeInjectPassTemplate_C2.pass", "CascadeInjectPassTemplate_C2", "CascadeProbeSHPass_C2" }
+        };
+
+        for (const auto& info : cascades)
+        {
+            AZ::RPI::PassFilter alreadyThere =
+                AZ::RPI::PassFilter::CreateWithPassName(AZ::Name(info.passName), renderPipeline);
+            if (passSystem->FindFirstPass(alreadyThere))
+                continue;
+
+            AZ::Data::Asset<AZ::RPI::PassAsset> asset =
                 AZ::RPI::AssetUtils::LoadAssetByProductPath<AZ::RPI::PassAsset>(
-                    "Passes/CascadeMergePassTemplate.pass",
-                    AZ::RPI::AssetUtils::TraceLevel::Warning);
-            if (mergeAsset.IsReady())
+                    info.assetPath, AZ::RPI::AssetUtils::TraceLevel::Warning);
+            if (asset.IsReady())
             {
-                const auto& templateOwner = mergeAsset->GetPassTemplate();
-                if (templateOwner)
+                const auto& tmpl = asset->GetPassTemplate();
+                if (tmpl && !passSystem->GetPassTemplate(AZ::Name(tmpl->m_name)))
                 {
-                    passSystem->AddPassTemplate(
-                        AZ::Name(templateOwner->m_name),
-                        AZStd::make_shared<AZ::RPI::PassTemplate>(*templateOwner));
+                    passSystem->AddPassTemplate(AZ::Name(tmpl->m_name),
+                        AZStd::make_shared<AZ::RPI::PassTemplate>(*tmpl));
                 }
             }
 
-            AZ::RPI::PassRequest mergeRequest;
-            mergeRequest.m_passName     = "CascadeMergePass";
-            mergeRequest.m_templateName = "CascadeMergePassTemplate";
+            AZ::RPI::PassRequest req;
+            req.m_passName     = info.passName;
+            req.m_templateName = info.templateName;
 
-            AZ::RPI::Ptr<AZ::RPI::Pass> mergePass = passSystem->CreatePassFromRequest(&mergeRequest);
-            if (mergePass)
+            AZ::RPI::Ptr<AZ::RPI::Pass> pass = passSystem->CreatePassFromRequest(&req);
+            if (pass && renderPipeline->AddPassAfter(pass, AZ::Name("ForwardSubsurface")))
             {
-                if (renderPipeline->AddPassAfter(mergePass, AZ::Name("CascadeProbeSHPass")))
-                {
-                    // Connect the fine input to the probe output of the inject pass
-                    mergePass->ChangeConnection(AZ::Name("FineProbeInput"),
-                        AZ::Name("CascadeProbeSHPass"), AZ::Name("ProbeSHOutput"), renderPipeline);
-                    // The coarse input currently binds to its own transient image (which starts black).
-                    // Later, we'll connect it to a coarser cascade's inject pass output.
-                    AZ_Printf("RadianceCascade", "Cascade merge pass inserted after probe injection.\n");
-                }
-                else
-                {
-                    AZ_Error("RadianceCascade", false, "AddPassAfter(CascadeProbeSHPass) failed.");
-                }
+                AZ_Printf("RadianceCascade", "Inject pass %s inserted.\n", info.passName);
             }
             else
             {
-                AZ_Error("RadianceCascade", false, "Failed to create CascadeMergePass from request.");
+                AZ_Error("RadianceCascade", false, "Failed to insert %s", info.passName);
+            }
+        }
+
+        // --------------------------------------------------------------------
+        // Merge passes: 16->8 and 8->4.
+        // --------------------------------------------------------------------
+        struct MergeInfo
+        {
+            const char* assetPath;
+            const char* templateName;
+            const char* passName;
+        };
+
+        const MergeInfo merges[] =
+        {
+            { "Passes/CascadeMergePassTemplate_16_8.pass", "CascadeMergePassTemplate_16_8", "CascadeMergePass_16_8" },
+            { "Passes/CascadeMergePassTemplate_8_4.pass",   "CascadeMergePassTemplate_8_4",   "CascadeMergePass_8_4"   }
+        };
+
+        for (const auto& info : merges)
+        {
+            AZ::RPI::PassFilter alreadyThere =
+                AZ::RPI::PassFilter::CreateWithPassName(AZ::Name(info.passName), renderPipeline);
+            if (passSystem->FindFirstPass(alreadyThere))
+                continue;
+
+            AZ::Data::Asset<AZ::RPI::PassAsset> asset =
+                AZ::RPI::AssetUtils::LoadAssetByProductPath<AZ::RPI::PassAsset>(
+                    info.assetPath, AZ::RPI::AssetUtils::TraceLevel::Warning);
+            if (asset.IsReady())
+            {
+                const auto& tmpl = asset->GetPassTemplate();
+                if (tmpl && !passSystem->GetPassTemplate(AZ::Name(tmpl->m_name)))
+                {
+                    passSystem->AddPassTemplate(AZ::Name(tmpl->m_name),
+                        AZStd::make_shared<AZ::RPI::PassTemplate>(*tmpl));
+                }
+            }
+
+            AZ::RPI::PassRequest req;
+            req.m_passName     = info.passName;
+            req.m_templateName = info.templateName;
+
+            AZ::RPI::Ptr<AZ::RPI::Pass> pass = passSystem->CreatePassFromRequest(&req);
+            if (pass && renderPipeline->AddPassAfter(pass, AZ::Name("CascadeProbeSHPass_C2")))  // after last inject
+            {
+                AZ_Printf("RadianceCascade", "Merge pass %s inserted.\n", info.passName);
+            }
+            else
+            {
+                AZ_Error("RadianceCascade", false, "Failed to insert merge %s", info.passName);
             }
         }
     }
@@ -245,5 +292,12 @@ namespace RadianceCascade
             static_cast<float>(config.m_volumeSize.GetY()),
             static_cast<float>(config.m_volumeSize.GetZ()),
             (config.m_injectionMode == InjectionMode::Software ? "Software" : "HWRT"));
+    }
+
+    AZ::Data::Instance<AZ::RPI::AttachmentImage> CascadeFeatureProcessor::GetProbeSHAttachment(uint32_t level) const
+    {
+        if (level < MaxCascadeLevels)
+            return m_probeAttachments[level];
+        return nullptr;
     }
 }

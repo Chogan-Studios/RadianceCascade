@@ -1,0 +1,52 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "CascadeInjectPassTemplate_C2",
+            "PassClass": "CascadeInjectPass",
+            "Slots": [
+                {
+                    "Name": "ProbeSHOutput",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_probeSH"
+                },
+                {
+                    "Name": "ProbeSHHistoryInput",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_probeSHHistory"
+                }
+            ],
+            "ImageAttachments": [
+                {
+                    "Name": "ProbeSHHistoryImage",
+                    "ImageDescriptor": {
+                        "Format": "R32G32B32A32_FLOAT",
+                        "Dimension": 3,
+                        "Size": { "Width": 36, "Height": 4, "Depth": 4 },
+                        "BindFlags": ["ShaderReadWrite"],
+                        "SharedQueueMask": "Graphics"
+                    }
+                }
+            ],
+            "Connections": [
+                {
+                    "LocalSlot": "ProbeSHHistoryInput",
+                    "AttachmentRef": { "Pass": "This", "Attachment": "ProbeSHHistoryImage" }
+                }
+            ],
+            "PassData": {
+                "$type": "ComputePassData",
+                "ShaderAsset": {
+                    "FilePath": "Shaders/Inject/CascadeInject_Software_C2.shader"
+                },
+                "ThreadCountX": 4,
+                "ThreadCountY": 4,
+                "ThreadCountZ": 4
+            }
+        }
+    }
+}

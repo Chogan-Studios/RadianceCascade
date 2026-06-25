@@ -2,6 +2,7 @@
 
 #include <RadianceCascade/RadianceCascadeFeatureProcessorInterface.h>
 #include <Atom/RPI.Public/Image/StreamingImage.h>
+#include <Atom/RPI.Public/Image/AttachmentImage.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Matrix4x4.h>
 
@@ -24,6 +25,7 @@ namespace RadianceCascade
         void Render(const FeatureProcessor::RenderPacket& packet) override;
         void AddRenderPasses(AZ::RPI::RenderPipeline* renderPipeline) override;
 
+        // Interface getters
         AZ::Data::Instance<AZ::RPI::Image> GetProbeSHBuffer(uint32_t cascadeLevel) const override;
         AZ::Data::Instance<AZ::RPI::Image> GetProbeOctahedralMap() const override;
         const AZStd::array<uint32_t, MaxCascadeLevels>& GetActiveProbeCounts() const override;
@@ -31,6 +33,10 @@ namespace RadianceCascade
         void ResetAllProbes() override;
         void SetCameraTransform(const AZ::Transform& worldTransform) override;
         void SetConfiguration(const RadianceCascadeComponentConfig& config) override;
+
+        // Returns the FP‑owned AttachmentImage for a given cascade level.
+        // This is the image that passes should import and bind.
+        AZ::Data::Instance<AZ::RPI::AttachmentImage> GetProbeSHAttachment(uint32_t level) const;
 
     private:
         void AllocateProbeBuffers();
@@ -63,5 +69,8 @@ namespace RadianceCascade
         AZ::Vector3   m_sunColor       = AZ::Vector3(1.0f, 0.95f, 0.8f);
         float         m_sunIntensity    = 4.0f;
         float         m_ambientIntensity = 0.1f;
+
+        // Persistent probe images owned by the FP – one per cascade level.
+        AZStd::array<AZ::Data::Instance<AZ::RPI::AttachmentImage>, MaxCascadeLevels> m_probeAttachments;
     };
 }

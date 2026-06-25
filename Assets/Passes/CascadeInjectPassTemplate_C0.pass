@@ -4,7 +4,7 @@
     "ClassName": "PassAsset",
     "ClassData": {
         "PassTemplate": {
-            "Name": "CascadeInjectPassTemplate",
+            "Name": "CascadeInjectPassTemplate_C0",
             "PassClass": "CascadeInjectPass",
             "Slots": [
                 {
@@ -22,15 +22,6 @@
             ],
             "ImageAttachments": [
                 {
-                    "Name": "ProbeSHImage",
-                    "ImageDescriptor": {
-                        "Format": "R32G32B32A32_FLOAT",
-                        "Dimension": 3,
-                        "Size": { "Width": 144, "Height": 16, "Depth": 16 },
-                        "SharedQueueMask": "Graphics"
-                    }
-                },
-                {
                     "Name": "ProbeSHHistoryImage",
                     "ImageDescriptor": {
                         "Format": "R32G32B32A32_FLOAT",
@@ -43,10 +34,6 @@
             ],
             "Connections": [
                 {
-                    "LocalSlot": "ProbeSHOutput",
-                    "AttachmentRef": { "Pass": "This", "Attachment": "ProbeSHImage" }
-                },
-                {
                     "LocalSlot": "ProbeSHHistoryInput",
                     "AttachmentRef": { "Pass": "This", "Attachment": "ProbeSHHistoryImage" }
                 }
@@ -54,7 +41,7 @@
             "PassData": {
                 "$type": "ComputePassData",
                 "ShaderAsset": {
-                    "FilePath": "Shaders/Inject/CascadeInject_Software.shader"
+                    "FilePath": "Shaders/Inject/CascadeInject_Software_C0.shader"
                 },
                 "ThreadCountX": 16,
                 "ThreadCountY": 16,
