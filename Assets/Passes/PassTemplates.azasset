@@ -1,21 +1,12 @@
 {
     "Type": "JsonSerialization",
     "Version": 1,
-    "ClassName": "AssetAliasesSourceData",
+    "ClassName": "PassTemplateMappingAsset",
     "ClassData": {
-        "AssetPaths": [
-            {
-                "Name": "CascadeInjectPassTemplate",
-                "Path": "Passes/CascadeInjectPassTemplate.pass"
-            },
-            {
-                "Name": "CascadeInjectProbeSHPassTemplate",
-                "Path": "Passes/CascadeInjectProbeSHPassTemplate.pass"
-            },
-            {
-                "Name": "CascadeCopyHistoryPassTemplate",
-                "Path": "Passes/CascadeCopyHistoryPassTemplate.pass"
-            }
-        ]
+        "Mapping": {
+            "CascadeInjectPassTemplate": "Passes/CascadeInjectPassTemplate.pass",
+            "CascadeDebugPassTemplate": "Passes/CascadeDebugPassTemplate.pass",
+            "CascadeMergePassTemplate": "Passes/CascadeMergePassTemplate.pass"
+        }
     }
 }

@@ -2,11 +2,136 @@
 
 ShaderResourceGroup PassSrg : SRG_PerPass
 {
-    RWTexture2D<float4> m_outputRW;
+    RWTexture3D<float4>   m_probeSH;
+    RWTexture3D<float4>   m_probeSHHistory;
 }
 
-[numthreads(8, 8, 1)]
-void MainCS(uint3 id : SV_DispatchThreadID)
+// ---------------------------------------------------------------------
+// Real SH basis functions (normalised) – hardcoded for a fixed sun direction
+// sunDir = normalize(0.5, -1.0, 0.3) ≈ (0.4319, -0.8639, 0.2592)
+// ---------------------------------------------------------------------
+static const float SH_Y00 = 0.28209479;   // 1/(2*sqrt(pi))
+
+static const float SH_Y1_1 = 0.4886025;   // sqrt(3/(4*pi))
+static const float SH_Y10  = 0.4886025;
+static const float SH_Y11  = 0.4886025;
+
+static const float SH_Y2_2 = 1.092548;    // sqrt(15/(4*pi))
+static const float SH_Y2_1 = 1.092548;
+static const float SH_Y20  = 0.3153915;   // sqrt(5/(16*pi))
+static const float SH_Y21  = 1.092548;
+static const float SH_Y22  = 0.546274;    // sqrt(15/(16*pi))
+
+// Pre‑computed basis values for the fixed sun direction
+static const float Y00 = SH_Y00;
+
+static const float Y1_1 = SH_Y1_1 * (-0.8639);
+static const float Y10  = SH_Y10  * ( 0.2592);
+static const float Y11  = SH_Y11  * ( 0.4319);
+
+static const float Y2_2 = SH_Y2_2 * ( 0.4319 * -0.8639);
+static const float Y2_1 = SH_Y2_1 * (-0.8639 *  0.2592);
+static const float Y20  = SH_Y20  * ( 3.0 * 0.2592 * 0.2592 - 1.0);
+static const float Y21  = SH_Y21  * ( 0.4319 *  0.2592);
+static const float Y22  = SH_Y22  * ( 0.4319 * 0.4319 - (-0.8639)*(-0.8639));
+
+// ---------------------------------------------------------------------
+// Main compute shader – one thread per probe
+// ---------------------------------------------------------------------
+[numthreads(1, 1, 1)]
+void MainCS(uint3 probeCoord : SV_DispatchThreadID)
 {
-    PassSrg::m_outputRW[id.xy] = float4(0.0, 1.0, 0.0, 1.0);
+    // Hardcoded grid (will be replaced by dynamic clipmap later)
+    const float3 clipmapOrigin = float3(0.0, 2.0, -5.0);
+    const float  cellSize      = 1.0;
+    const uint3  gridSize      = uint3(16, 16, 16);
+
+    if (any(probeCoord >= gridSize))
+        return;
+
+    float3 worldPos = clipmapOrigin + (float3(probeCoord) + 0.5) * cellSize;
+
+    // ---- Synthetic scene: ground plane at Y=0 ----
+    float3 normal = float3(0, 1, 0);   // upward
+    if (worldPos.y > 0.0)
+        normal = float3(0, -1, 0);     // flip if above ground
+
+    float3 baseColor = float3(0.5, 0.5, 0.5);
+    if (worldPos.y < 0.2)
+        baseColor = float3(0.3, 0.6, 0.3);  // greenish near ground
+
+    // ---- Directional light parameters ----
+    const float3 sunDir   = normalize(float3(0.5, -1.0, 0.3));
+    const float3 sunColor = float3(1.0, 0.95, 0.8);
+    const float  sunIntensity = 4.0;
+    const float  ambientIntensity = 0.2;
+
+    // Radiance values
+    float3 ambient = baseColor * ambientIntensity;
+    float3 sunRadiance = sunColor * sunIntensity;
+
+    // ---- SH coefficients ----
+    // L0
+    float3 L0  = ambient * 3.5449077 + sunRadiance * Y00;   // 2*sqrt(pi) ≈ 3.5449
+
+    // L1 (three coefficients, stored as float3)
+    float3 L1_1 = sunRadiance * Y1_1;
+    float3 L10  = sunRadiance * Y10;
+    float3 L11  = sunRadiance * Y11;
+
+    // L2 (five coefficients)
+    float3 L2_2 = sunRadiance * Y2_2;
+    float3 L2_1 = sunRadiance * Y2_1;
+    float3 L20  = sunRadiance * Y20;
+    float3 L21  = sunRadiance * Y21;
+    float3 L22  = sunRadiance * Y22;
+
+    // ---- Temporal blend ----
+    uint3 idx0 = uint3(probeCoord.x * 9, probeCoord.y, probeCoord.z);
+    float4 prevL0 = PassSrg::m_probeSHHistory[idx0 + uint3(0,0,0)];
+    float4 prevL1_1 = PassSrg::m_probeSHHistory[idx0 + uint3(1,0,0)];
+    float4 prevL10  = PassSrg::m_probeSHHistory[idx0 + uint3(2,0,0)];
+    float4 prevL11  = PassSrg::m_probeSHHistory[idx0 + uint3(3,0,0)];
+    float4 prevL2_2 = PassSrg::m_probeSHHistory[idx0 + uint3(4,0,0)];
+    float4 prevL2_1 = PassSrg::m_probeSHHistory[idx0 + uint3(5,0,0)];
+    float4 prevL20  = PassSrg::m_probeSHHistory[idx0 + uint3(6,0,0)];
+    float4 prevL21  = PassSrg::m_probeSHHistory[idx0 + uint3(7,0,0)];
+    float4 prevL22  = PassSrg::m_probeSHHistory[idx0 + uint3(8,0,0)];
+
+    // Adaptive blend weight (based on L0 luminance)
+    float newLum  = dot(L0, float3(0.2126, 0.7152, 0.0722));
+    float prevLum = dot(prevL0.rgb, float3(0.2126, 0.7152, 0.0722));
+    float delta   = abs(newLum - prevLum) / max(prevLum, 1e-4);
+    float alpha   = (delta < 0.1) ? 0.08 : ((delta < 0.5) ? 0.3 : 1.0);
+
+    float3 blendL0   = lerp(prevL0.rgb,   L0,   alpha);
+    float3 blendL1_1 = lerp(prevL1_1.rgb, L1_1, alpha);
+    float3 blendL10  = lerp(prevL10.rgb,  L10,  alpha);
+    float3 blendL11  = lerp(prevL11.rgb,  L11,  alpha);
+    float3 blendL2_2 = lerp(prevL2_2.rgb, L2_2, alpha);
+    float3 blendL2_1 = lerp(prevL2_1.rgb, L2_1, alpha);
+    float3 blendL20  = lerp(prevL20.rgb,  L20,  alpha);
+    float3 blendL21  = lerp(prevL21.rgb,  L21,  alpha);
+    float3 blendL22  = lerp(prevL22.rgb,  L22,  alpha);
+
+    // Write to current and history buffers
+    PassSrg::m_probeSH[idx0 + uint3(0,0,0)] = float4(blendL0,   1.0);
+    PassSrg::m_probeSH[idx0 + uint3(1,0,0)] = float4(blendL1_1, 1.0);
+    PassSrg::m_probeSH[idx0 + uint3(2,0,0)] = float4(blendL10,  1.0);
+    PassSrg::m_probeSH[idx0 + uint3(3,0,0)] = float4(blendL11,  1.0);
+    PassSrg::m_probeSH[idx0 + uint3(4,0,0)] = float4(blendL2_2, 1.0);
+    PassSrg::m_probeSH[idx0 + uint3(5,0,0)] = float4(blendL2_1, 1.0);
+    PassSrg::m_probeSH[idx0 + uint3(6,0,0)] = float4(blendL20,  1.0);
+    PassSrg::m_probeSH[idx0 + uint3(7,0,0)] = float4(blendL21,  1.0);
+    PassSrg::m_probeSH[idx0 + uint3(8,0,0)] = float4(blendL22,  1.0);
+
+    PassSrg::m_probeSHHistory[idx0 + uint3(0,0,0)] = float4(blendL0,   1.0);
+    PassSrg::m_probeSHHistory[idx0 + uint3(1,0,0)] = float4(blendL1_1, 1.0);
+    PassSrg::m_probeSHHistory[idx0 + uint3(2,0,0)] = float4(blendL10,  1.0);
+    PassSrg::m_probeSHHistory[idx0 + uint3(3,0,0)] = float4(blendL11,  1.0);
+    PassSrg::m_probeSHHistory[idx0 + uint3(4,0,0)] = float4(blendL2_2, 1.0);
+    PassSrg::m_probeSHHistory[idx0 + uint3(5,0,0)] = float4(blendL2_1, 1.0);
+    PassSrg::m_probeSHHistory[idx0 + uint3(6,0,0)] = float4(blendL20,  1.0);
+    PassSrg::m_probeSHHistory[idx0 + uint3(7,0,0)] = float4(blendL21,  1.0);
+    PassSrg::m_probeSHHistory[idx0 + uint3(8,0,0)] = float4(blendL22,  1.0);
 }

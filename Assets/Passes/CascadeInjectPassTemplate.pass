@@ -11,17 +11,32 @@
                     "Name": "ProbeSHOutput",
                     "SlotType": "Output",
                     "ScopeAttachmentUsage": "Shader",
-                    "ShaderInputName": "m_outputRW"
+                    "ShaderInputName": "m_probeSH"
+                },
+                {
+                    "Name": "ProbeSHHistoryInput",
+                    "SlotType": "InputOutput",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_probeSHHistory"
                 }
             ],
             "ImageAttachments": [
                 {
                     "Name": "ProbeSHImage",
-                    "SizeSource": {
-                        "Source": { "Pass": "Parent", "Attachment": "PipelineOutput" }
-                    },
                     "ImageDescriptor": {
-                        "Format": "R16G16B16A16_FLOAT",
+                        "Format": "R32G32B32A32_FLOAT",
+                        "Dimension": 3,
+                        "Size": { "Width": 144, "Height": 16, "Depth": 16 },
+                        "SharedQueueMask": "Graphics"
+                    }
+                },
+                {
+                    "Name": "ProbeSHHistoryImage",
+                    "ImageDescriptor": {
+                        "Format": "R32G32B32A32_FLOAT",
+                        "Dimension": 3,
+                        "Size": { "Width": 144, "Height": 16, "Depth": 16 },
+                        "BindFlags": ["ShaderReadWrite"],
                         "SharedQueueMask": "Graphics"
                     }
                 }
@@ -29,10 +44,11 @@
             "Connections": [
                 {
                     "LocalSlot": "ProbeSHOutput",
-                    "AttachmentRef": {
-                        "Pass": "This",
-                        "Attachment": "ProbeSHImage"
-                    }
+                    "AttachmentRef": { "Pass": "This", "Attachment": "ProbeSHImage" }
+                },
+                {
+                    "LocalSlot": "ProbeSHHistoryInput",
+                    "AttachmentRef": { "Pass": "This", "Attachment": "ProbeSHHistoryImage" }
                 }
             ],
             "PassData": {
@@ -40,9 +56,9 @@
                 "ShaderAsset": {
                     "FilePath": "Shaders/Inject/CascadeInject_Software.shader"
                 },
-                "ThreadCountX": 32,
-                "ThreadCountY": 32,
-                "ThreadCountZ": 1
+                "ThreadCountX": 16,
+                "ThreadCountY": 16,
+                "ThreadCountZ": 16
             }
         }
     }

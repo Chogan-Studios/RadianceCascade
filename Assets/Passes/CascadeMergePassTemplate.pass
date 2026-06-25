@@ -5,19 +5,50 @@
     "ClassData": {
         "PassTemplate": {
             "Name": "CascadeMergePassTemplate",
-            "PassClass": "CascadeMergePass",
+            "PassClass": "CascadeInjectPass",
             "Slots": [
                 {
-                    "Name": "InputOutput",
+                    "Name": "FineProbeInput",
                     "SlotType": "InputOutput",
                     "ScopeAttachmentUsage": "Shader",
-                    "ShaderInputName": "m_fineSH"
+                    "ShaderInputName": "m_fineProbeSH"
                 },
                 {
-                    "Name": "CoarseInput",
+                    "Name": "CoarseProbeInput",
                     "SlotType": "Input",
                     "ScopeAttachmentUsage": "Shader",
-                    "ShaderInputName": "m_coarseSH"
+                    "ShaderInputName": "m_coarseProbeSH"
+                }
+            ],
+            "ImageAttachments": [
+                {
+                    "Name": "FineProbeImage",
+                    "ImageDescriptor": {
+                        "Format": "R32G32B32A32_FLOAT",
+                        "Dimension": 3,
+                        "Size": { "Width": 144, "Height": 16, "Depth": 16 },
+                        "BindFlags": ["ShaderReadWrite"],
+                        "SharedQueueMask": "Graphics"
+                    }
+                },
+                {
+                    "Name": "CoarseProbeImage",
+                    "ImageDescriptor": {
+                        "Format": "R32G32B32A32_FLOAT",
+                        "Dimension": 3,
+                        "Size": { "Width": 144, "Height": 16, "Depth": 16 },
+                        "SharedQueueMask": "Graphics"
+                    }
+                }
+            ],
+            "Connections": [
+                {
+                    "LocalSlot": "FineProbeInput",
+                    "AttachmentRef": { "Pass": "This", "Attachment": "FineProbeImage" }
+                },
+                {
+                    "LocalSlot": "CoarseProbeInput",
+                    "AttachmentRef": { "Pass": "This", "Attachment": "CoarseProbeImage" }
                 }
             ],
             "PassData": {
@@ -25,9 +56,9 @@
                 "ShaderAsset": {
                     "FilePath": "Shaders/Merge/CascadeMerge.shader"
                 },
-                "ThreadCountX": 32,
-                "ThreadCountY": 32,
-                "ThreadCountZ": 1
+                "ThreadCountX": 16,
+                "ThreadCountY": 16,
+                "ThreadCountZ": 16
             }
         }
     }

@@ -1,0 +1,45 @@
+{
+    "Type": "JsonSerialization",
+    "Version": 1,
+    "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "CascadeDebugPassTemplate",
+            "PassClass": "CascadeInjectPass",
+            "Slots": [
+                {
+                    "Name": "Output",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_output"
+                }
+            ],
+            "ImageAttachments": [
+                {
+                    "Name": "OutputImage",
+                    "ImageDescriptor": {
+                        "Format": "R8G8B8A8_UNORM",
+                        "Dimension": 2,
+                        "Size": { "Width": 256, "Height": 256 },
+                        "SharedQueueMask": "Graphics"
+                    }
+                }
+            ],
+            "Connections": [
+                {
+                    "LocalSlot": "Output",
+                    "AttachmentRef": { "Pass": "This", "Attachment": "OutputImage" }
+                }
+            ],
+            "PassData": {
+                "$type": "ComputePassData",
+                "ShaderAsset": {
+                    "FilePath": "Shaders/Debug/CascadeDebug.shader"
+                },
+                "ThreadCountX": 32,
+                "ThreadCountY": 32,
+                "ThreadCountZ": 1
+            }
+        }
+    }
+}

@@ -1,37 +1,49 @@
 #include <Atom/Features/SrgSemantics.azsli>
 
-// ---- Inlined from Utils/ProbeIndexing.azsli ----
-int3 WorldToProbeCoord(float3 worldPos, float3 clipmapOrigin, float cellSize, int3 gridDims)
-{
-    float3 local = worldPos - clipmapOrigin;
-    int3 coord = int3(floor(local / cellSize));
-    coord = clamp(coord, int3(0,0,0), gridDims - 1);
-    return coord;
-}
-
-// ---- SRG and entry point ----
 ShaderResourceGroup PassSrg : SRG_PerPass
 {
-    RWTexture3D<float4> m_fineSH;
-    Texture3D<float4>   m_coarseSH;
-    float3              m_fineOrigin;
-    float3              m_coarseOrigin;
-    float               m_fineCellSize;
-    float               m_coarseCellSize;
-    uint3               m_fineDims;
-    uint3               m_coarseDims;
-};
+    RWTexture3D<float4>   m_fineProbeSH;      // fine cascade (read‑write)
+    Texture3D<float4>     m_coarseProbeSH;    // coarse cascade (read‑only)
+}
 
-[numthreads(8, 8, 8)]
-void MainCS(uint3 dispatchThreadID : SV_DispatchThreadID)
+[numthreads(1, 1, 1)]
+void MainCS(uint3 probeCoord : SV_DispatchThreadID)
 {
-    if (any(dispatchThreadID >= PassSrg::m_fineDims))
+    const uint3 fineGridSize = uint3(16, 16, 16);
+
+    if (any(probeCoord >= fineGridSize))
         return;
 
-    float3 fineWorldPos = PassSrg::m_fineOrigin + float3(dispatchThreadID) * PassSrg::m_fineCellSize;
-    int3 coarseCoord = WorldToProbeCoord(fineWorldPos, PassSrg::m_coarseOrigin, PassSrg::m_coarseCellSize, PassSrg::m_coarseDims);
+    // Coarse cascade is a single black probe at (0,0,0) for now
+    uint coarseBaseX = 0;
+    uint coarseY = 0;
+    uint coarseZ = 0;
 
-    float4 coarseValue = PassSrg::m_coarseSH[coarseCoord];
-    float4 fineValue   = PassSrg::m_fineSH[dispatchThreadID];
-    PassSrg::m_fineSH[dispatchThreadID] = lerp(fineValue, coarseValue, 0.5);
+    uint fineBaseX = probeCoord.x * 9;
+    uint fineY = probeCoord.y;
+    uint fineZ = probeCoord.z;
+
+    // Read all 9 coefficients from coarse (all black)
+    float4 coarseSH[9];
+    for (int c = 0; c < 9; ++c)
+    {
+        coarseSH[c] = PassSrg::m_coarseProbeSH[uint3(coarseBaseX + c, coarseY, coarseZ)];
+    }
+
+    // Read all 9 coefficients from fine
+    float4 fineSH[9];
+    for (int c = 0; c < 9; ++c)
+    {
+        fineSH[c] = PassSrg::m_fineProbeSH[uint3(fineBaseX + c, fineY, fineZ)];
+    }
+
+    // Compute residual = fine - coarse for all coefficients
+    // L0 (coeff 0) is left unchanged in the fine buffer
+    // Coeff 1..8 get the residual
+    for (int c = 1; c < 9; ++c)
+    {
+        float3 residual = fineSH[c].rgb - coarseSH[c].rgb;
+        PassSrg::m_fineProbeSH[uint3(fineBaseX + c, fineY, fineZ)] = float4(residual, 1.0);
+    }
+    // L0 stays as injected (we don't overwrite it)
 }
