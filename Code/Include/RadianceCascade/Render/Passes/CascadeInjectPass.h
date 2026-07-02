@@ -9,7 +9,6 @@ namespace RadianceCascade
     public:
         AZ_RTTI(CascadeInjectPass, "{DEADBEEF-CAFE-FACE-1234-567890ABCDEF}", AZ::RPI::ComputePass);
         AZ_CLASS_ALLOCATOR(CascadeInjectPass, AZ::SystemAllocator);
-
         static AZ::RPI::Ptr<CascadeInjectPass> Create(const AZ::RPI::PassDescriptor& descriptor);
 
     protected:

@@ -1,0 +1,17 @@
+#include <Atom/Features/SrgSemantics.azsli>
+
+ShaderResourceGroup PassSrg : SRG_PerPass {
+    Texture2D<float> m_msaaDepth;          // Input MSAA depth
+    RWTexture2D<float> m_resolvedDepth;    // Output resolved depth
+}
+
+[numthreads(8, 8, 1)]
+void MainCS(uint3 threadId : SV_DispatchThreadID)
+{
+    uint2 dims;
+    PassSrg::m_resolvedDepth.GetDimensions(dims.x, dims.y);
+    if (any(threadId.xy >= dims)) return;
+
+    float depth = PassSrg::m_msaaDepth.Load(uint3(threadId.xy, 0));
+    PassSrg::m_resolvedDepth[threadId.xy] = depth;
+}

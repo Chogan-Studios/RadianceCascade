@@ -1,0 +1,42 @@
+{
+    "Type": "JsonSerialization", "Version": 1, "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "CopyDepthPassTemplate",
+            "PassClass": "CascadeInjectPass",
+            "Slots": [
+                {
+                    "Name": "DepthInput",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_msaaDepth"
+                },
+                {
+                    "Name": "ResolvedDepthOutput",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_resolvedDepth"
+                }
+            ],
+            "ImageAttachments": [],
+            "Connections": [
+                {
+                    "LocalSlot": "DepthInput",
+                    "AttachmentRef": {
+                        "Pass": "Parent",
+                        "Attachment": "DepthLinear"
+                    }
+                }
+            ],
+            "PassData": {
+                "$type": "ComputePassData",
+                "ShaderAsset": {
+                    "FilePath": "Shaders/Utils/CopyDepth.shader"
+                },
+                "ThreadCountX": 8,
+                "ThreadCountY": 8,
+                "ThreadCountZ": 1
+            }
+        }
+    }
+}

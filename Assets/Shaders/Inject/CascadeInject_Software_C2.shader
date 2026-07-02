@@ -2,7 +2,10 @@
     "Source": "CascadeInject_Software.azsl",
     "ProgramSettings": {
         "EntryPoints": [
-            { "name": "MainCS", "type": "Compute" }
+            {
+                "Name": "MainCS",
+                "Type": "Compute"
+            }
         ]
     },
     "Definitions": [

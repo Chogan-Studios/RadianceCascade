@@ -1,84 +1,72 @@
 #include <Atom/Features/SrgSemantics.azsli>
-
 #ifndef FINE_GRID_SIZE_X
 #error "FINE_GRID_SIZE_X must be defined"
 #endif
-#ifndef COARSE_GRID_SIZE_X
-#error "COARSE_GRID_SIZE_X must be defined"
-#endif
 
-ShaderResourceGroup PassSrg : SRG_PerPass
-{
-    RWTexture3D<float4>   m_fineProbeSH;      // fine cascade (read‑write)
-    Texture3D<float4>     m_coarseProbeSH;    // coarse cascade (read‑only)
+ShaderResourceGroup PassSrg : SRG_PerPass {
+    RWTexture3D<float4> m_fineProbeSH;
+    Texture3D<float4>   m_coarseProbeSH;
 }
 
 static const uint3 FineGridSize   = uint3(FINE_GRID_SIZE_X, FINE_GRID_SIZE_Y, FINE_GRID_SIZE_Z);
 static const uint3 CoarseGridSize = uint3(COARSE_GRID_SIZE_X, COARSE_GRID_SIZE_Y, COARSE_GRID_SIZE_Z);
-static const uint  UpscaleFactor  = FineGridSize.x / CoarseGridSize.x;
+static const uint UpscaleFactor = FineGridSize.x / CoarseGridSize.x;
 
 [numthreads(1, 1, 1)]
 void MainCS(uint3 fineCoord : SV_DispatchThreadID)
 {
-    if (any(fineCoord >= FineGridSize))
-        return;
+    if (any(fineCoord >= FineGridSize)) return;
 
-    // Compute coarse position with trilinear weights
+    uint3 fineBase = uint3(fineCoord.x * 9, fineCoord.y, fineCoord.z);
+    uint3 coarseBase = uint3(fineCoord.x / UpscaleFactor * 9, fineCoord.y / UpscaleFactor, fineCoord.z / UpscaleFactor);
+
+    // Get fine SH coefficients
+    float4 fineSH[9];
+    [unroll]
+    for (int k = 0; k < 9; ++k) {
+        fineSH[k] = PassSrg::m_fineProbeSH[fineBase + uint3(k, 0, 0)];
+    }
+
+    // Compute coarse trilinear interpolation position
     float3 coarsePos = (float3(fineCoord) + 0.5) / float(UpscaleFactor) - 0.5;
     int3 baseCoarse = clamp(int3(floor(coarsePos)), int3(0,0,0), int3(CoarseGridSize - 2));
     float3 frac = coarsePos - float3(baseCoarse);
 
-    // Gather 8 coarse probes
-    float4 coarseSH[8][9];
-    for (int dz = 0; dz < 2; ++dz)
-    {
-        for (int dy = 0; dy < 2; ++dy)
-        {
-            for (int dx = 0; dx < 2; ++dx)
-            {
-                int3 coord = baseCoarse + int3(dx, dy, dz);
-                uint baseX = coord.x * 9;
-                int corner = dx + dy*2 + dz*4;
-                for (int c = 0; c < 9; ++c)
-                {
-                    coarseSH[corner][c] = PassSrg::m_coarseProbeSH[uint3(baseX + c, coord.y, coord.z)];
+    // Trilinear sample coarse SH
+    float4 coarseInterp[9] = { (float4)0, (float4)0, (float4)0, (float4)0, (float4)0, (float4)0, (float4)0, (float4)0, (float4)0 };
+    [unroll]
+    for (int dz = 0; dz < 2; ++dz) {
+        for (int dy = 0; dy < 2; ++dy) {
+            for (int dx = 0; dx < 2; ++dx) {
+                int3 c = baseCoarse + int3(dx, dy, dz);
+                if (any(c < 0) || any(c >= CoarseGridSize)) continue;
+                float weight = (dx ? frac.x : 1.0 - frac.x) *
+                               (dy ? frac.y : 1.0 - frac.y) *
+                               (dz ? frac.z : 1.0 - frac.z);
+                uint3 baseC = uint3(c.x * 9, c.y, c.z);
+                [unroll]
+                for (int k = 0; k < 9; ++k) {
+                    coarseInterp[k] += PassSrg::m_coarseProbeSH[baseC + uint3(k, 0, 0)] * weight;
                 }
             }
         }
     }
 
-    // Trilinear interpolation weights
-    float3 w = frac;
-    float3 w0 = 1.0 - w;
-
-    // Read fine SH
-    float4 fineSH[9];
-    uint fineBaseX = fineCoord.x * 9;
-    for (int c = 0; c < 9; ++c)
-    {
-        fineSH[c] = PassSrg::m_fineProbeSH[uint3(fineBaseX + c, fineCoord.y, fineCoord.z)];
-    }
-
-    // Interpolated coarse SH at this fine position
-    float4 interpCoarse[9];
-    for (int c = 0; c < 9; ++c)
-    {
-        interpCoarse[c] = 0;
-        for (int corner = 0; corner < 8; ++corner)
-        {
-            int dz = corner / 4;
-            int dy = (corner % 4) / 2;
-            int dx = corner % 2;
-            float weight = (dx ? w.x : w0.x) * (dy ? w.y : w0.y) * (dz ? w.z : w0.z);
-            interpCoarse[c] += coarseSH[corner][c] * weight;
+    // Cascade merge: L0 retains fine (or overwrite with coarse), L1-L8 become residual (fine - coarse)
+    [unroll]
+    for (int k = 0; k < 9; ++k) {
+        if (k == 0) {
+            // Optionally overwrite L0 with coarse to propagate ambient. Uncomment if desired:
+            // fineSH[k] = coarseInterp[k]; 
+            // For now, keep L0 unchanged (fine) as per typical residual method.
+        } else {
+            fineSH[k] = fineSH[k] - coarseInterp[k]; // Detail residual in higher bands
         }
     }
 
-    // Write residuals for coefficients 1..8, keep L0 unchanged
-    for (int c = 1; c < 9; ++c)
-    {
-        float3 residual = fineSH[c].rgb - interpCoarse[c].rgb;
-        PassSrg::m_fineProbeSH[uint3(fineBaseX + c, fineCoord.y, fineCoord.z)] = float4(residual, 1.0);
+    // Write back to fine
+    [unroll]
+    for (int k = 0; k < 9; ++k) {
+        PassSrg::m_fineProbeSH[fineBase + uint3(k, 0, 0)] = fineSH[k];
     }
-    // L0 left as injected
 }

@@ -1,50 +1,20 @@
 {
-    "Type": "JsonSerialization",
-    "Version": 1,
-    "ClassName": "PassAsset",
+    "Type": "JsonSerialization", "Version": 1, "ClassName": "PassAsset",
     "ClassData": {
         "PassTemplate": {
             "Name": "CascadeInjectPassTemplate_C0",
             "PassClass": "CascadeInjectPass",
             "Slots": [
-                {
-                    "Name": "ProbeSHOutput",
-                    "SlotType": "Output",
-                    "ScopeAttachmentUsage": "Shader",
-                    "ShaderInputName": "m_probeSH"
-                },
-                {
-                    "Name": "ProbeSHHistoryInput",
-                    "SlotType": "InputOutput",
-                    "ScopeAttachmentUsage": "Shader",
-                    "ShaderInputName": "m_probeSHHistory"
-                }
+                { "Name": "ProbeSHOutput", "SlotType": "Output", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_probeSH" },
+                { "Name": "ProbeSHHistoryInput", "SlotType": "InputOutput", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_probeSHHistory" }
             ],
-            "ImageAttachments": [
-                {
-                    "Name": "ProbeSHHistoryImage",
-                    "ImageDescriptor": {
-                        "Format": "R32G32B32A32_FLOAT",
-                        "Dimension": 3,
-                        "Size": { "Width": 144, "Height": 16, "Depth": 16 },
-                        "BindFlags": ["ShaderReadWrite"],
-                        "SharedQueueMask": "Graphics"
-                    }
-                }
-            ],
-            "Connections": [
-                {
-                    "LocalSlot": "ProbeSHHistoryInput",
-                    "AttachmentRef": { "Pass": "This", "Attachment": "ProbeSHHistoryImage" }
-                }
-            ],
+            "ImageAttachments": [],
+            "Connections": [],
             "PassData": {
                 "$type": "ComputePassData",
-                "ShaderAsset": {
-                    "FilePath": "Shaders/Inject/CascadeInject_Software_C0.shader"
-                },
-                "ThreadCountX": 16,
-                "ThreadCountY": 16,
+                "ShaderAsset": { "FilePath": "Shaders/Inject/CascadeInject_Software_C0.shader" },
+                "ThreadCountX": 16, 
+                "ThreadCountY": 16, 
                 "ThreadCountZ": 16
             }
         }

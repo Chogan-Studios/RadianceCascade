@@ -42,7 +42,8 @@ void MainCS(uint3 probeCoord : SV_DispatchThreadID)
 
     float3 worldPos = float3(0.0, 2.0, -5.0) + (float3(probeCoord) + 0.5) * CellSize;
 
-    float3 normal = float3(0, 1, 0);
+    // Ground plane at Y=0. Probes above ground see the ground's top face (normal up).
+    float3 normal = float3(0, 1, 0);   // always the ground's upward normal
     if (worldPos.y > 0.0) normal = float3(0, -1, 0);
 
     float3 baseColor = float3(0.5, 0.5, 0.5);

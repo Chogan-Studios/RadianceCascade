@@ -1,14 +1,14 @@
 {
-    "Type": "JsonSerialization",
-    "Version": 1,
-    "ClassName": "PassTemplateMappingAsset",
+    "Type": "JsonSerialization", "Version": 1, "ClassName": "PassTemplateMappingAsset",
     "ClassData": {
         "Mapping": {
             "CascadeInjectPassTemplate_C0": "Passes/CascadeInjectPassTemplate_C0.pass",
             "CascadeInjectPassTemplate_C1": "Passes/CascadeInjectPassTemplate_C1.pass",
             "CascadeInjectPassTemplate_C2": "Passes/CascadeInjectPassTemplate_C2.pass",
             "CascadeMergePassTemplate_16_8": "Passes/CascadeMergePassTemplate_16_8.pass",
-            "CascadeMergePassTemplate_8_4": "Passes/CascadeMergePassTemplate_8_4.pass"
+            "CascadeMergePassTemplate_8_4": "Passes/CascadeMergePassTemplate_8_4.pass",
+            "CascadeDiffuseGIPassTemplate": "Passes/CascadeDiffuseGIPassTemplate.pass",
+            "CopyDepthPassTemplate": "Passes/CopyDepthPassTemplate.pass"
         }
     }
 }

@@ -1,0 +1,55 @@
+{
+    "Type": "JsonSerialization", "Version": 1, "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "CascadeDiffuseGIPassTemplate",
+            "PassClass": "CascadeInjectPass",
+            "Slots": [
+                {
+                    "Name": "CascadeProbeInput",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_cascadeProbeSH"
+                },
+                {
+                    "Name": "DepthInput",
+                    "SlotType": "Input",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_depthTexture"
+                },
+                {
+                    "Name": "Output",
+                    "SlotType": "Output",
+                    "ScopeAttachmentUsage": "Shader",
+                    "ShaderInputName": "m_output"
+                }
+            ],
+            "ImageAttachments": [],
+            "Connections": [
+                {
+                    "LocalSlot": "DepthInput",
+                    "AttachmentRef": {
+                        "Pass": "Parent",
+                        "Attachment": "DepthLinear"
+                    }
+                },
+                {
+                    "LocalSlot": "CascadeProbeInput",
+                    "AttachmentRef": {
+                        "Pass": "CascadeProbeSHPass_C0",
+                        "Attachment": "ProbeSHOutput"
+                    }
+                }
+            ],
+            "PassData": {
+                "$type": "ComputePassData",
+                "ShaderAsset": {
+                    "FilePath": "Shaders/Sample/CascadeDiffuseGI.shader"
+                },
+                "ThreadCountX": 240,
+                "ThreadCountY": 135,
+                "ThreadCountZ": 1
+            }
+        }
+    }
+}
