@@ -1,0 +1,15 @@
+#include <Atom/Features/SrgSemantics.azsli>
+
+ShaderResourceGroup PassSrg : SRG_PerPass {
+    RWTexture3D<float4> m_probeSH;
+    RWTexture3D<float4> m_probeSHHistory;
+}
+
+[numthreads(1, 1, 1)]
+void MainCS(uint3 coord : SV_DispatchThreadID)
+{
+    PassSrg::m_probeSH[coord] = float4(0.0, 0.0, 0.0, 0.0);
+    PassSrg::m_probeSHHistory[coord] = float4(0.0, 0.0, 0.0, 0.0);
+}
+
+

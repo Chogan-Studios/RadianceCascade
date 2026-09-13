@@ -10,3 +10,4 @@ void MainCS(uint3 threadId : SV_DispatchThreadID)
 {
     PassSrg::m_output[threadId.xy] = float4(0.0, 1.0, 0.0, 1.0);
 }
+

@@ -37,3 +37,5 @@ float3 SHReconstruct(float3 coeffs[9], float3 dir)
            coeffs[8] * (x * x - y * y) * 0.5;
 }
 #endif
+
+

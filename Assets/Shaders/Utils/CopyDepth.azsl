@@ -15,3 +15,5 @@ void MainCS(uint3 threadId : SV_DispatchThreadID)
     float depth = PassSrg::m_msaaDepth.Load(uint3(threadId.xy, 0));
     PassSrg::m_resolvedDepth[threadId.xy] = depth;
 }
+
+

@@ -8,7 +8,10 @@
             "CascadeMergePassTemplate_16_8": "Passes/CascadeMergePassTemplate_16_8.pass",
             "CascadeMergePassTemplate_8_4": "Passes/CascadeMergePassTemplate_8_4.pass",
             "CascadeDiffuseGIPassTemplate": "Passes/CascadeDiffuseGIPassTemplate.pass",
-            "CopyDepthPassTemplate": "Passes/CopyDepthPassTemplate.pass"
+            "CopyDepthPassTemplate": "Passes/CopyDepthPassTemplate.pass",
+            "ClearProbesPassTemplate_C0": "Passes/ClearProbesPassTemplate_C0.pass",
+            "ClearProbesPassTemplate_C1": "Passes/ClearProbesPassTemplate_C1.pass",
+            "ClearProbesPassTemplate_C2": "Passes/ClearProbesPassTemplate_C2.pass"
         }
     }
 }

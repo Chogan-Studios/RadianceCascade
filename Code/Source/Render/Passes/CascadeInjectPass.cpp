@@ -2,7 +2,9 @@
 #include <RadianceCascade/Render/CascadeFeatureProcessor.h>
 #include <Atom/RPI.Public/Shader/ShaderResourceGroup.h>
 #include <Atom/RPI.Public/Scene.h>
+#include <Atom/RPI.Public/View.h>
 #include <AzCore/Name/Name.h>
+#include <AzCore/Math/Matrix4x4.h>
 
 namespace RadianceCascade
 {
@@ -15,7 +17,11 @@ namespace RadianceCascade
         : ComputePass(descriptor)
     {}
 
-    // Fixed parser: finds "_C" and reads the digit after it
+    static bool IsClearPass(const AZ::Name& passName)
+    {
+        return passName.GetStringView().starts_with("CascadeClearProbes_");
+    }
+
     static uint32_t GetCascadeLevelFromName(const AZ::Name& passName)
     {
         AZStd::string_view name = passName.GetStringView();
@@ -103,6 +109,17 @@ namespace RadianceCascade
                     frameGraph.GetAttachmentDatabase().ImportImage(coarseImage->GetAttachmentId(), coarseImage->GetRHIImage());
             }
         }
+        else if (IsClearPass(passName))
+        {
+            uint32_t level = GetCascadeLevelFromName(passName);
+            auto probeImage = fp->GetProbeSHAttachment(level);
+            if (probeImage)
+                frameGraph.GetAttachmentDatabase().ImportImage(probeImage->GetAttachmentId(), probeImage->GetRHIImage());
+
+            auto historyImage = fp->GetProbeHistoryAttachment(level);
+            if (historyImage)
+                frameGraph.GetAttachmentDatabase().ImportImage(historyImage->GetAttachmentId(), historyImage->GetRHIImage());
+        }
         else // Injection pass
         {
             uint32_t level = GetCascadeLevelFromName(passName);
@@ -131,21 +148,15 @@ namespace RadianceCascade
 
         if (IsResolveDepthPass(passName))
         {
-            // Only bind the output; the input is bound via the template's "Connections" block.
             auto depthImage = fp->GetResolvedDepthImage();
             if (depthImage)
                 AttachImageToSlot(AZ::Name("ResolvedDepthOutput"), depthImage);
         }
         else if (IsDiffuseGIPass(passName))
         {
-            auto probeImage = fp->GetProbeSHAttachment(0);
-            if (probeImage) AttachImageToSlot(AZ::Name("CascadeProbeInput"), probeImage);
-
             auto outputImage = fp->GetDiffuseGIOutput();
-            if (outputImage) AttachImageToSlot(AZ::Name("Output"), outputImage);
-
-            auto depthImage = fp->GetResolvedDepthImage();
-            if (depthImage) AttachImageToSlot(AZ::Name("DepthInput"), depthImage);
+            if (outputImage)
+                AttachImageToSlot(AZ::Name("Output"), outputImage);
         }
         else if (IsMergePass(passName))
         {
@@ -158,6 +169,17 @@ namespace RadianceCascade
                 auto coarseImage = fp->GetProbeSHAttachment(coarseLevel);
                 if (coarseImage) AttachImageToSlot(AZ::Name("CoarseProbeInput"), coarseImage);
             }
+        }
+        else if (IsClearPass(passName))
+        {
+            uint32_t level = GetCascadeLevelFromName(passName);
+            auto probeImage = fp->GetProbeSHAttachment(level);
+            if (probeImage)
+                AttachImageToSlot(AZ::Name("ProbeSHOutput"), probeImage);
+
+            auto historyImage = fp->GetProbeHistoryAttachment(level);
+            if (historyImage)
+                AttachImageToSlot(AZ::Name("ProbeSHHistoryInput"), historyImage);
         }
         else // Injection pass
         {
@@ -173,5 +195,76 @@ namespace RadianceCascade
     void CascadeInjectPass::FrameBeginInternal(FramePrepareParams params)
     {
         ComputePass::FrameBeginInternal(params);
+
+        m_srgCompiledThisFrame = false;
+
+        const AZ::Name& passName = GetName();
+        auto shaderResourceGroup = GetShaderResourceGroup();
+        if (!shaderResourceGroup)
+            return;
+
+        // --- For injection passes: set ambient intensity ---
+        if (!IsClearPass(passName) && !IsMergePass(passName) && !IsDiffuseGIPass(passName) && !IsResolveDepthPass(passName))
+        {
+            auto* scene = GetScene();
+            if (scene)
+            {
+                auto* fp = scene->GetFeatureProcessor<CascadeFeatureProcessor>();
+                if (fp)
+                {
+                    float ambient = fp->GetAmbientIntensity();
+                    AZ::RHI::ShaderInputConstantIndex ambientIndex = shaderResourceGroup->FindShaderInputConstantIndex(AZ::Name("m_ambientIntensity"));
+                    if (ambientIndex.IsValid())
+                    {
+                        shaderResourceGroup->SetConstant(ambientIndex, ambient);
+                    }
+                }
+            }
+        }
+
+        // --- For GI pass: set view and projection constants ---
+        if (IsDiffuseGIPass(passName))
+        {
+            auto* renderPipeline = GetRenderPipeline();
+            AZ::RPI::ViewPtr view = nullptr;
+            if (renderPipeline)
+            {
+                view = renderPipeline->GetDefaultView();
+            }
+
+            // Fallback to identity if no view
+            AZ::Matrix4x4 viewToWorld = AZ::Matrix4x4::CreateIdentity();
+            AZ::Matrix4x4 proj = AZ::Matrix4x4::CreateIdentity();
+            float invTanFovX = 1.0f;
+            float invTanFovY = 1.0f;
+
+            if (view)
+            {
+                viewToWorld = view->GetViewToWorldMatrix();
+                proj = view->GetViewToClipMatrix();
+                invTanFovX = proj.GetElement(0, 0);
+                invTanFovY = proj.GetElement(1, 1);
+            }
+
+            AZ::RHI::ShaderInputConstantIndex viewToWorldIndex = shaderResourceGroup->FindShaderInputConstantIndex(AZ::Name("m_viewToWorld"));
+            if (viewToWorldIndex.IsValid())
+            {
+                shaderResourceGroup->SetConstant(viewToWorldIndex, viewToWorld);
+            }
+
+            AZ::Vector2 invTanFov(invTanFovX, invTanFovY);
+            AZ::RHI::ShaderInputConstantIndex invTanFovIndex = shaderResourceGroup->FindShaderInputConstantIndex(AZ::Name("m_invTanFov"));
+            if (invTanFovIndex.IsValid())
+            {
+                shaderResourceGroup->SetConstant(invTanFovIndex, invTanFov);
+            }
+        }
+
+        // Compile once per frame
+        if (!m_srgCompiledThisFrame)
+        {
+            shaderResourceGroup->Compile();
+            m_srgCompiledThisFrame = true;
+        }
     }
 }

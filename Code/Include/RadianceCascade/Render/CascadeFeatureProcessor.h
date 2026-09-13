@@ -1,7 +1,7 @@
 #pragma once
 
 #include <RadianceCascade/RadianceCascadeFeatureProcessorInterface.h>
-#include <RadianceCascade/Render/CascadeCommon.h>   // defines MaxCascadeLevels
+#include <RadianceCascade/Render/CascadeCommon.h>
 #include <Atom/RPI.Public/Image/AttachmentImage.h>
 #include <AzCore/Math/Transform.h>
 #include <AzCore/Math/Matrix4x4.h>
@@ -35,11 +35,14 @@ namespace RadianceCascade
         void SetCameraTransform(const AZ::Transform& worldTransform) override;
         void SetConfiguration(const RadianceCascadeComponentConfig& config) override;
 
-        // FP-owned persistent images
+        // FP‑owned persistent images
         AZ::Data::Instance<AZ::RPI::AttachmentImage> GetProbeSHAttachment(uint32_t level) const { return m_probeAttachments[level]; }
         AZ::Data::Instance<AZ::RPI::AttachmentImage> GetProbeHistoryAttachment(uint32_t level) const { return m_probeHistoryAttachments[level]; }
         AZ::Data::Instance<AZ::RPI::AttachmentImage> GetDiffuseGIOutput() const { return m_diffuseGIOutput; }
         AZ::Data::Instance<AZ::RPI::AttachmentImage> GetResolvedDepthImage() const { return m_resolvedDepthImage; }
+
+        // Ambient intensity getter (used by injection passes)
+        float GetAmbientIntensity() const { return m_ambientIntensity; }
 
     private:
         void AllocateProbeBuffers();
@@ -52,6 +55,9 @@ namespace RadianceCascade
         float m_temporalBlendWeight = 0.08f;
         uint32_t m_probesPerFrame = 64;
         bool m_resetRequested = false;
+
+        // Configurable ambient intensity
+        float m_ambientIntensity = 0.05f;
 
         AZ::Transform m_cameraTransform;
         AZStd::array<AZ::Vector3, MaxCascadeLevels> m_clipmapOrigins;
@@ -73,7 +79,6 @@ namespace RadianceCascade
         AZ::Vector3 m_sunDirection   = AZ::Vector3(0.5f, -1.0f, 0.3f).GetNormalized();
         AZ::Vector3 m_sunColor       = AZ::Vector3(1.0f, 0.95f, 0.8f);
         float m_sunIntensity         = 4.0f;
-        float m_ambientIntensity     = 0.1f;
 
         // Static sizes for probe images (L0: 144x16x16, L1: 72x8x8, L2: 36x4x4)
         static const AZ::RHI::Size ProbeImageSizes[MaxCascadeLevels];

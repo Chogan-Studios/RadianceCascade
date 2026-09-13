@@ -18,21 +18,19 @@ void MainCS(uint3 fineCoord : SV_DispatchThreadID)
     if (any(fineCoord >= FineGridSize)) return;
 
     uint3 fineBase = uint3(fineCoord.x * 9, fineCoord.y, fineCoord.z);
-    uint3 coarseBase = uint3(fineCoord.x / UpscaleFactor * 9, fineCoord.y / UpscaleFactor, fineCoord.z / UpscaleFactor);
 
-    // Get fine SH coefficients
     float4 fineSH[9];
     [unroll]
     for (int k = 0; k < 9; ++k) {
-        fineSH[k] = PassSrg::m_fineProbeSH[fineBase + uint3(k, 0, 0)];
+        float4 val = PassSrg::m_fineProbeSH[fineBase + uint3(k, 0, 0)];
+        if (isnan(val.r) || isnan(val.g) || isnan(val.b) || isinf(val.r) || isinf(val.g) || isinf(val.b)) val = float4(0,0,0,0);
+        fineSH[k] = val;
     }
 
-    // Compute coarse trilinear interpolation position
     float3 coarsePos = (float3(fineCoord) + 0.5) / float(UpscaleFactor) - 0.5;
     int3 baseCoarse = clamp(int3(floor(coarsePos)), int3(0,0,0), int3(CoarseGridSize - 2));
     float3 frac = coarsePos - float3(baseCoarse);
 
-    // Trilinear sample coarse SH
     float4 coarseInterp[9] = { (float4)0, (float4)0, (float4)0, (float4)0, (float4)0, (float4)0, (float4)0, (float4)0, (float4)0 };
     [unroll]
     for (int dz = 0; dz < 2; ++dz) {
@@ -46,27 +44,35 @@ void MainCS(uint3 fineCoord : SV_DispatchThreadID)
                 uint3 baseC = uint3(c.x * 9, c.y, c.z);
                 [unroll]
                 for (int k = 0; k < 9; ++k) {
-                    coarseInterp[k] += PassSrg::m_coarseProbeSH[baseC + uint3(k, 0, 0)] * weight;
+                    float4 val = PassSrg::m_coarseProbeSH[baseC + uint3(k, 0, 0)];
+                    if (isnan(val.r) || isnan(val.g) || isnan(val.b) || isinf(val.r) || isinf(val.g) || isinf(val.b)) val = float4(0,0,0,0);
+                    coarseInterp[k] += val * weight;
                 }
             }
         }
     }
 
-    // Cascade merge: L0 retains fine (or overwrite with coarse), L1-L8 become residual (fine - coarse)
+    [unroll]
+    for (int k = 0; k < 9; ++k) {
+        if (isnan(coarseInterp[k].r) || isnan(coarseInterp[k].g) || isnan(coarseInterp[k].b) || isinf(coarseInterp[k].r) || isinf(coarseInterp[k].g) || isinf(coarseInterp[k].b)) coarseInterp[k] = float4(0,0,0,0);
+    }
+
     [unroll]
     for (int k = 0; k < 9; ++k) {
         if (k == 0) {
-            // Optionally overwrite L0 with coarse to propagate ambient. Uncomment if desired:
-            // fineSH[k] = coarseInterp[k]; 
-            // For now, keep L0 unchanged (fine) as per typical residual method.
+            // Keep L0 unchanged
         } else {
-            fineSH[k] = fineSH[k] - coarseInterp[k]; // Detail residual in higher bands
+            fineSH[k] = fineSH[k] - coarseInterp[k];
+            // Tighter clamp to eliminate noise
+            fineSH[k] = clamp(fineSH[k], float4(-5.0, -5.0, -5.0, 1.0), float4(5.0, 5.0, 5.0, 1.0));
         }
     }
 
-    // Write back to fine
     [unroll]
     for (int k = 0; k < 9; ++k) {
         PassSrg::m_fineProbeSH[fineBase + uint3(k, 0, 0)] = fineSH[k];
     }
 }
+
+
+

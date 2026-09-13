@@ -3,12 +3,10 @@
 ShaderResourceGroup PassSrg : SRG_PerPass {
     RWTexture2D<float4> m_output;
     Texture3D<float4>   m_cascadeProbeSH;
-    Texture2D<float>    m_depthTexture; // DepthLinear (half-res)
+    Texture2D<float>    m_depthTexture;
+    float4x4            m_viewToWorld;
+    float2              m_invTanFov;
 }
-
-static const float fov = 1.22173; // ~70 degrees
-static const float aspect = 16.0 / 9.0;
-static const float2 invTanFov = float2(1.0 / tan(fov * 0.5) * aspect, 1.0 / tan(fov * 0.5));
 
 float3 ComputeIrradiance(float4 sh[9], float3 normal) {
     float3 irradiance = sh[0].rgb * 3.14159265;
@@ -19,26 +17,25 @@ float3 ComputeIrradiance(float4 sh[9], float3 normal) {
 [numthreads(8, 8, 1)]
 void MainCS(uint3 threadId : SV_DispatchThreadID)
 {
-    if (any(threadId.xy >= uint2(1920, 1080))) return;
+    uint2 outDims;
+    PassSrg::m_output.GetDimensions(outDims.x, outDims.y);
+    if (any(threadId.xy >= outDims)) return;
 
-    float2 uv = (float2(threadId.xy) + 0.5) / float2(1920.0, 1080.0);
+    float2 uv = (float2(threadId.xy) + 0.5) / float2(outDims);
     uv.y = 1.0 - uv.y;
 
-    // --- Depth read with resolution scaling ---
     uint2 depthDims;
     PassSrg::m_depthTexture.GetDimensions(depthDims.x, depthDims.y);
-    uint2 loadCoord = uint2(float2(threadId.xy) * float2(depthDims.x, depthDims.y) / float2(1920.0, 1080.0));
+    uint2 loadCoord = uint2(float2(threadId.xy) * float2(depthDims) / float2(outDims));
     float depth = PassSrg::m_depthTexture.Load(uint3(loadCoord, 0));
-    if (isnan(depth) || isinf(depth) || depth <= 0.0) {
-        depth = 5.0; // fallback
-    }
+    if (isnan(depth) || isinf(depth) || depth <= 0.0) depth = 5.0;
 
-    // Reconstruct world position
-    float2 viewRay = (uv * 2.0 - 1.0) * invTanFov;
-    float3 viewDir = normalize(float3(viewRay, 1.0));
-    float3 worldPos = viewDir * depth;
+    float2 ndc = uv * 2.0 - 1.0;
+    float3 viewSpaceDir = float3(ndc.x * PassSrg::m_invTanFov.x, ndc.y * PassSrg::m_invTanFov.y, 1.0);
+    float3 worldSpaceDir = normalize(mul((float3x3)PassSrg::m_viewToWorld, viewSpaceDir));
+    float3 cameraPos = PassSrg::m_viewToWorld[3].xyz;
+    float3 worldPos = cameraPos + worldSpaceDir * depth;
 
-    // Sample cascade at worldPos (grid origin & cell size from injector)
     const float3 gridOrigin = float3(0.0, 2.0, -5.0);
     const float cellSize = 1.0;
     const int3 gridSize = int3(16, 16, 16);
@@ -47,22 +44,26 @@ void MainCS(uint3 threadId : SV_DispatchThreadID)
     int3 base = clamp(int3(floor(probeCoord)), int3(0,0,0), gridSize - 2);
     float3 frac = probeCoord - float3(base);
 
-    // Initialize SH array
     float4 sh[9];
     [unroll]
     for (int i = 0; i < 9; ++i) sh[i] = float4(0,0,0,0);
 
-    // Trilinear sample all 9 coefficients
     for(int dz=0; dz<2; ++dz) for(int dy=0; dy<2; ++dy) for(int dx=0; dx<2; ++dx) {
         int3 c = base + int3(dx,dy,dz);
         if(any(c<0)||any(c>=gridSize)) continue;
         float weight = (dx?frac.x:1-frac.x)*(dy?frac.y:1-frac.y)*(dz?frac.z:1-frac.z);
         uint baseX = c.x * 9;
-        for(int k=0; k<9; ++k) sh[k] += PassSrg::m_cascadeProbeSH[uint3(baseX + k, c.y, c.z)] * weight;
+        for(int k=0; k<9; ++k) {
+            float4 val = PassSrg::m_cascadeProbeSH[uint3(baseX + k, c.y, c.z)];
+            if (isnan(val.r) || isnan(val.g) || isnan(val.b) || isinf(val.r) || isinf(val.g) || isinf(val.b)) val = float4(0,0,0,0);
+            sh[k] += val * weight;
+        }
     }
 
-    // Use world normal from GBuffer later; for now hardcode ground normal
     float3 normal = float3(0, 1, 0);
     float3 irradiance = ComputeIrradiance(sh, normal);
-    PassSrg::m_output[threadId.xy] = float4(irradiance, 1.0);
+    if (isnan(irradiance.r) || isnan(irradiance.g) || isnan(irradiance.b) || isinf(irradiance.r) || isinf(irradiance.g) || isinf(irradiance.b)) irradiance = float3(0,0,0);
+
+    // Clamp for debugging – prevents HDR clipping in the preview
+    PassSrg::m_output[threadId.xy] = float4(saturate(irradiance), 1.0);
 }

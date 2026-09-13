@@ -16,6 +16,8 @@ namespace RadianceCascade
         "0 = Software injection, 1 = Hardware Ray Tracing");
     AZ_CVAR(float, r_radianceCascade_temporalWeight, 0.08f, nullptr, AZ::ConsoleFunctorFlags::Null,
         "Base temporal blend weight for probe accumulation");
+    AZ_CVAR(float, r_radianceCascade_ambientIntensity, 0.05f, nullptr, AZ::ConsoleFunctorFlags::Null,
+        "Ambient intensity for synthetic scene (0.0 - 1.0)");
 
     const AZ::RHI::Size CascadeFeatureProcessor::ProbeImageSizes[MaxCascadeLevels] =
     {
@@ -34,6 +36,8 @@ namespace RadianceCascade
 
     void CascadeFeatureProcessor::Activate()
     {
+        m_ambientIntensity = r_radianceCascade_ambientIntensity;
+
         auto* pool = AZ::RPI::ImageSystemInterface::Get()->GetSystemAttachmentPool().get();
         if (!pool)
         {
@@ -41,7 +45,6 @@ namespace RadianceCascade
             return;
         }
 
-        // Probe buffers
         for (uint32_t level = 0; level < MaxCascadeLevels; ++level)
         {
             AZ::RHI::ImageDescriptor desc;
@@ -67,7 +70,7 @@ namespace RadianceCascade
             m_probeHistoryAttachments[level] = AZ::RPI::AttachmentImage::Create(histReq);
         }
 
-        // Diffuse GI output
+        // GI output – fixed 1920x1080
         {
             AZ::RHI::ImageDescriptor desc;
             desc.m_bindFlags = AZ::RHI::ImageBindFlags::ShaderReadWrite;
@@ -85,8 +88,7 @@ namespace RadianceCascade
             m_diffuseGIOutput = AZ::RPI::AttachmentImage::Create(req);
         }
 
-        // Resolved depth is no longer needed, but we keep the FP-owned image for potential future use.
-        // We'll allocate it to avoid errors, but it's not used in the pipeline.
+        // Unused, kept to avoid hard failures
         {
             AZ::RHI::ImageDescriptor desc;
             desc.m_bindFlags = AZ::RHI::ImageBindFlags::ShaderReadWrite;
@@ -121,6 +123,8 @@ namespace RadianceCascade
 
     void CascadeFeatureProcessor::Render([[maybe_unused]] const FeatureProcessor::RenderPacket& packet)
     {
+        // Update ambient intensity from CVar
+        m_ambientIntensity = r_radianceCascade_ambientIntensity;
     }
 
     void CascadeFeatureProcessor::AddRenderPasses(AZ::RPI::RenderPipeline* renderPipeline)
@@ -143,7 +147,24 @@ namespace RadianceCascade
             return passSystem->CreatePassFromRequest(&req);
         };
 
-        // Injection passes
+        struct ClearInfo { const char* assetPath; const char* templateName; const char* passName; };
+        const ClearInfo clears[] = {
+            { "Passes/ClearProbesPassTemplate_C0.pass", "ClearProbesPassTemplate_C0", "CascadeClearProbes_C0" },
+            { "Passes/ClearProbesPassTemplate_C1.pass", "ClearProbesPassTemplate_C1", "CascadeClearProbes_C1" },
+            { "Passes/ClearProbesPassTemplate_C2.pass", "ClearProbesPassTemplate_C2", "CascadeClearProbes_C2" }
+        };
+        for (const auto& info : clears)
+        {
+            AZ::Name passName(info.passName);
+            if (!passSystem->FindFirstPass(AZ::RPI::PassFilter::CreateWithPassName(passName, renderPipeline)))
+            {
+                auto pass = createPass(info.assetPath, info.templateName, info.passName);
+                if (pass && renderPipeline->AddPassAfter(pass, lastPass))
+                    AZ_Printf("RadianceCascade", "Clear pass %s inserted.", info.passName);
+            }
+            lastPass = passName;
+        }
+
         struct CascadeInfo { const char* assetPath; const char* templateName; const char* passName; };
         const CascadeInfo cascades[] = {
             { "Passes/CascadeInjectPassTemplate_C0.pass", "CascadeInjectPassTemplate_C0", "CascadeProbeSHPass_C0" },
@@ -162,7 +183,6 @@ namespace RadianceCascade
             lastPass = passName;
         }
 
-        // Merge passes
         struct MergeInfo { const char* assetPath; const char* templateName; const char* passName; };
         const MergeInfo merges[] = {
             { "Passes/CascadeMergePassTemplate_16_8.pass", "CascadeMergePassTemplate_16_8", "CascadeMerge_16to8" },
@@ -180,7 +200,6 @@ namespace RadianceCascade
             lastPass = passName;
         }
 
-        // Diffuse GI
         AZ::Name diffuseGIPassName("CascadeDiffuseGIPass");
         if (!passSystem->FindFirstPass(AZ::RPI::PassFilter::CreateWithPassName(diffuseGIPassName, renderPipeline)))
         {
@@ -190,7 +209,6 @@ namespace RadianceCascade
         }
     }
 
-    // Getters
     AZ::Data::Instance<AZ::RPI::Image> CascadeFeatureProcessor::GetProbeSHBuffer(uint32_t cascadeLevel) const
     {
         return m_probeAttachments[cascadeLevel];

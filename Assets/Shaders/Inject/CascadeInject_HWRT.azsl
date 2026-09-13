@@ -11,3 +11,5 @@ void MainCS(uint3 id : SV_DispatchThreadID)
     // Placeholder: output something into the 3D texture
     PassSrg::m_probeSHBuffer[id] = float4(1.0, 0.0, 0.0, 1.0);
 }
+
+

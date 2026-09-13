@@ -18,5 +18,8 @@ namespace RadianceCascade
         void SetupFrameGraphDependencies(AZ::RHI::FrameGraphInterface frameGraph) override;
         void BuildInternal() override;
         void FrameBeginInternal(FramePrepareParams params) override;
+
+    private:
+        bool m_srgCompiledThisFrame = false; // Prevents multiple SRG compiles per frame
     };
 }

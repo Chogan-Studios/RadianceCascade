@@ -46,8 +46,8 @@
                 "ShaderAsset": {
                     "FilePath": "Shaders/Sample/CascadeDiffuseGI.shader"
                 },
-                "ThreadCountX": 240,
-                "ThreadCountY": 135,
+                "ThreadCountX": 1920,
+                "ThreadCountY": 1080,
                 "ThreadCountZ": 1
             }
         }

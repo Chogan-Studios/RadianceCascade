@@ -16,3 +16,6 @@ int3 WorldToProbeCoord(float3 worldPos, float3 clipmapOrigin, float cellSize, in
     return coord;
 }
 #endif
+
+
+

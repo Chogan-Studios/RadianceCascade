@@ -1,0 +1,20 @@
+{
+    "Type": "JsonSerialization", "Version": 1, "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "ClearProbesPassTemplate_C2",
+            "PassClass": "CascadeInjectPass",
+            "Slots": [
+                { "Name": "ProbeSHOutput", "SlotType": "Output", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_probeSH" },
+                { "Name": "ProbeSHHistoryInput", "SlotType": "InputOutput", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_probeSHHistory" }
+            ],
+            "ImageAttachments": [],
+            "Connections": [],
+            "PassData": {
+                "$type": "ComputePassData",
+                "ShaderAsset": { "FilePath": "Shaders/Utils/ClearProbes.shader" },
+                "ThreadCountX": 36, "ThreadCountY": 4, "ThreadCountZ": 4
+            }
+        }
+    }
+}
