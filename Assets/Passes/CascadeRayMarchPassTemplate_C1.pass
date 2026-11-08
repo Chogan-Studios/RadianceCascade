@@ -1,0 +1,20 @@
+{
+    "Type": "JsonSerialization", "Version": 1, "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "CascadeRayMarchPassTemplate_C1",
+            "PassClass": "CascadeRayMarchPass",
+            "Slots": [
+                { "Name": "Output", "SlotType": "Output", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_radianceOutput" },
+                { "Name": "DepthInput", "SlotType": "Input", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_depthTexture" }
+            ],
+            "ImageAttachments": [],
+            "Connections": [],
+            "PassData": {
+                "$type": "ComputePassData",
+                "ShaderAsset": { "FilePath": "Shaders/RayMarch/CascadeRayMarch.shader" },
+                "ThreadCountX": 8, "ThreadCountY": 8, "ThreadCountZ": 1
+            }
+        }
+    }
+}

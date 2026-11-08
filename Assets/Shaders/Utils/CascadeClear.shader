@@ -1,5 +1,5 @@
 {
-    "Source": "CascadeDiffuseGI.azsl",
+    "Source": "CascadeClear.azsl",
     "ProgramSettings": {
         "EntryPoints": [
             { "name": "MainCS", "type": "Compute" }

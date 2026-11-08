@@ -1,0 +1,24 @@
+#pragma once
+
+// Encode a 3D direction to a 2D octahedral coordinate in [-1, 1]
+float2 OctEncode(float3 n)
+{
+    n /= (abs(n.x) + abs(n.y) + abs(n.z));
+    float2 uv = n.xy;
+    if (n.z < 0.0)
+    {
+        uv = (1.0 - abs(n.yx)) * float2(n.x >= 0.0 ? 1.0 : -1.0, n.y >= 0.0 ? 1.0 : -1.0);
+    }
+    return uv;
+}
+
+// Decode a 2D octahedral coordinate in [-1, 1] to a 3D direction
+float3 OctDecode(float2 e)
+{
+    float3 n = float3(e.xy, 1.0 - abs(e.x) - abs(e.y));
+    if (n.z < 0.0)
+    {
+        n.xy = (1.0 - abs(n.yx)) * float2(n.x >= 0.0 ? 1.0 : -1.0, n.y >= 0.0 ? 1.0 : -1.0);
+    }
+    return normalize(n);
+}

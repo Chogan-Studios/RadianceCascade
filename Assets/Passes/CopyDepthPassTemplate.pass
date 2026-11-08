@@ -3,7 +3,7 @@
     "ClassData": {
         "PassTemplate": {
             "Name": "CopyDepthPassTemplate",
-            "PassClass": "CascadeInjectPass",
+            "PassClass": "AZ::RPI::ComputePass",
             "Slots": [
                 {
                     "Name": "DepthInput",

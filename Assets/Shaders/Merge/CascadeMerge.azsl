@@ -1,78 +1,36 @@
 #include <Atom/Features/SrgSemantics.azsli>
-#ifndef FINE_GRID_SIZE_X
-#error "FINE_GRID_SIZE_X must be defined"
+#include "../Utils/Octahedral.azsli"
+
+#ifndef MERGE_WEIGHT
+#error "MERGE_WEIGHT must be defined"
 #endif
 
-ShaderResourceGroup PassSrg : SRG_PerPass {
-    RWTexture3D<float4> m_fineProbeSH;
-    Texture3D<float4>   m_coarseProbeSH;
-}
-
-static const uint3 FineGridSize   = uint3(FINE_GRID_SIZE_X, FINE_GRID_SIZE_Y, FINE_GRID_SIZE_Z);
-static const uint3 CoarseGridSize = uint3(COARSE_GRID_SIZE_X, COARSE_GRID_SIZE_Y, COARSE_GRID_SIZE_Z);
-static const uint UpscaleFactor = FineGridSize.x / CoarseGridSize.x;
-
-[numthreads(1, 1, 1)]
-void MainCS(uint3 fineCoord : SV_DispatchThreadID)
+ShaderResourceGroup PassSrg : SRG_PerPass
 {
-    if (any(fineCoord >= FineGridSize)) return;
-
-    uint3 fineBase = uint3(fineCoord.x * 9, fineCoord.y, fineCoord.z);
-
-    float4 fineSH[9];
-    [unroll]
-    for (int k = 0; k < 9; ++k) {
-        float4 val = PassSrg::m_fineProbeSH[fineBase + uint3(k, 0, 0)];
-        if (isnan(val.r) || isnan(val.g) || isnan(val.b) || isinf(val.r) || isinf(val.g) || isinf(val.b)) val = float4(0,0,0,0);
-        fineSH[k] = val;
-    }
-
-    float3 coarsePos = (float3(fineCoord) + 0.5) / float(UpscaleFactor) - 0.5;
-    int3 baseCoarse = clamp(int3(floor(coarsePos)), int3(0,0,0), int3(CoarseGridSize - 2));
-    float3 frac = coarsePos - float3(baseCoarse);
-
-    float4 coarseInterp[9] = { (float4)0, (float4)0, (float4)0, (float4)0, (float4)0, (float4)0, (float4)0, (float4)0, (float4)0 };
-    [unroll]
-    for (int dz = 0; dz < 2; ++dz) {
-        for (int dy = 0; dy < 2; ++dy) {
-            for (int dx = 0; dx < 2; ++dx) {
-                int3 c = baseCoarse + int3(dx, dy, dz);
-                if (any(c < 0) || any(c >= CoarseGridSize)) continue;
-                float weight = (dx ? frac.x : 1.0 - frac.x) *
-                               (dy ? frac.y : 1.0 - frac.y) *
-                               (dz ? frac.z : 1.0 - frac.z);
-                uint3 baseC = uint3(c.x * 9, c.y, c.z);
-                [unroll]
-                for (int k = 0; k < 9; ++k) {
-                    float4 val = PassSrg::m_coarseProbeSH[baseC + uint3(k, 0, 0)];
-                    if (isnan(val.r) || isnan(val.g) || isnan(val.b) || isinf(val.r) || isinf(val.g) || isinf(val.b)) val = float4(0,0,0,0);
-                    coarseInterp[k] += val * weight;
-                }
-            }
-        }
-    }
-
-    [unroll]
-    for (int k = 0; k < 9; ++k) {
-        if (isnan(coarseInterp[k].r) || isnan(coarseInterp[k].g) || isnan(coarseInterp[k].b) || isinf(coarseInterp[k].r) || isinf(coarseInterp[k].g) || isinf(coarseInterp[k].b)) coarseInterp[k] = float4(0,0,0,0);
-    }
-
-    [unroll]
-    for (int k = 0; k < 9; ++k) {
-        if (k == 0) {
-            // Keep L0 unchanged
-        } else {
-            fineSH[k] = fineSH[k] - coarseInterp[k];
-            // Tighter clamp to eliminate noise
-            fineSH[k] = clamp(fineSH[k], float4(-5.0, -5.0, -5.0, 1.0), float4(5.0, 5.0, 5.0, 1.0));
-        }
-    }
-
-    [unroll]
-    for (int k = 0; k < 9; ++k) {
-        PassSrg::m_fineProbeSH[fineBase + uint3(k, 0, 0)] = fineSH[k];
-    }
+    RWTexture2D<float4> m_fineRadiance;
+    Texture2D<float4>   m_coarseRadiance;
 }
 
+[numthreads(8, 8, 1)]
+void MainCS(uint3 threadId : SV_DispatchThreadID)
+{
+    uint2 dims;
+    PassSrg::m_fineRadiance.GetDimensions(dims.x, dims.y);
+    if (any(threadId.xy >= dims)) return;
 
+    float4 fineColor = PassSrg::m_fineRadiance[threadId.xy];
+    
+    uint2 coarseDims;
+    PassSrg::m_coarseRadiance.GetDimensions(coarseDims.x, coarseDims.y);
+    
+    // Map the fine thread ID to the coarse texture dimensions
+    uint2 coarseCoord = uint2((float2(threadId.xy) / float2(dims)) * float2(coarseDims));
+    
+    // Load bypasses samplers
+    float4 coarseColor = PassSrg::m_coarseRadiance.Load(int3(coarseCoord, 0));
 
+    // Use the macro defined in the .shader file
+    float4 merged = lerp(fineColor, coarseColor, MERGE_WEIGHT);
+    
+    PassSrg::m_fineRadiance[threadId.xy] = merged;
+}

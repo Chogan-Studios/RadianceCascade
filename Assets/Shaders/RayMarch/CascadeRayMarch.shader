@@ -1,5 +1,5 @@
 {
-    "Source": "CascadeInject_Software.azsl",
+    "Source": "CascadeRayMarch.azsl",
     "ProgramSettings": {
         "EntryPoints": [
             {
@@ -9,9 +9,7 @@
         ]
     },
     "Definitions": [
-        "CASCADE_GRID_SIZE_X=16",
-        "CASCADE_GRID_SIZE_Y=16",
-        "CASCADE_GRID_SIZE_Z=16",
-        "CASCADE_CELL_SIZE=1.0"
+        "CASCADE_GRID_SIZE=16",
+        "CASCADE_SPACING=0.5"
     ]
 }

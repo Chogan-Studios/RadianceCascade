@@ -1,0 +1,76 @@
+#include <Atom/Features/SrgSemantics.azsli>
+#include "../Utils/Octahedral.azsli"
+
+#ifndef CASCADE_GRID_SIZE
+#error "CASCADE_GRID_SIZE must be defined"
+#endif
+#ifndef CASCADE_SPACING
+#error "CASCADE_SPACING must be defined"
+#endif
+
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    RWTexture2D<float4> m_radianceOutput;
+    Texture2D<float>    m_depthTexture;
+    float4x4            m_viewProj;
+    float4x4            m_invViewProj;
+    float3              m_gridOrigin;
+}
+
+static const uint GridSize = CASCADE_GRID_SIZE;
+static const float Spacing = CASCADE_SPACING;
+static const float IntervalStart = Spacing;
+static const float IntervalEnd = Spacing * 2.0;
+
+[numthreads(8, 8, 1)]
+void MainCS(uint3 threadId : SV_DispatchThreadID)
+{
+    uint2 dims;
+    PassSrg::m_radianceOutput.GetDimensions(dims.x, dims.y);
+    if (any(threadId.xy >= dims)) return;
+
+    uint probeX = threadId.x / 16;
+    uint probeY = threadId.y / 8;
+    uint octX = threadId.x % 16;
+    uint octY = threadId.y % 8;
+
+    float3 probePos = PassSrg::m_gridOrigin + float3(probeX, probeY, 0) * Spacing;
+
+    float2 octUV = (float2(octX, octY) / float2(16.0, 8.0)) * 2.0 - 1.0;
+    float3 rayDir = OctDecode(octUV);
+
+    float3 rayPos = probePos;
+    float stepSize = Spacing * 0.1;
+    float3 radiance = float3(0.0, 0.0, 0.0);
+
+    for (int i = 0; i < 8; ++i)
+    {
+        rayPos += rayDir * stepSize;
+        
+        float4 clipPos = mul(PassSrg::m_viewProj, float4(rayPos, 1.0));
+        float3 ndc = clipPos.xyz / clipPos.w;
+        float2 screenUV = ndc.xy * 0.5 + 0.5;
+        
+        if (all(screenUV >= 0.0) && all(screenUV <= 1.0))
+        {
+            uint2 depthDims;
+            PassSrg::m_depthTexture.GetDimensions(depthDims.x, depthDims.y);
+            uint2 loadCoord = uint2(screenUV * float2(depthDims));
+            
+            // Switched to Load() to bypass sampler state requirements
+            float sceneDepth = PassSrg::m_depthTexture.Load(int3(loadCoord, 0));
+            
+            float4 sceneWorldPos = mul(PassSrg::m_invViewProj, float4(screenUV * 2.0 - 1.0, sceneDepth, 1.0));
+            sceneWorldPos /= sceneWorldPos.w;
+            
+            float dist = distance(rayPos, sceneWorldPos.xyz);
+            if (dist < stepSize)
+            {
+                radiance = float3(0.8, 0.8, 0.8); 
+                break;
+            }
+        }
+    }
+
+    PassSrg::m_radianceOutput[threadId.xy] = float4(radiance, 1.0);
+}

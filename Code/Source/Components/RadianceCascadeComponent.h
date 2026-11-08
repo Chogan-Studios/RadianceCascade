@@ -8,15 +8,16 @@ namespace RadianceCascade
     {
     public:
         AZ_COMPONENT(RadianceCascadeComponent, "{F6A1B2C3-4D5E-6F7A-8B9C-0D1E2F3A4B5C}");
-
+        
         RadianceCascadeComponent() = default;
-        explicit RadianceCascadeComponent(const RadianceCascadeComponentConfig& config);
+        explicit RadianceCascadeComponent(const RadianceCascadeComponentConfig&) {}
 
         static void Reflect(AZ::ReflectContext* context);
         void Activate() override;
         void Deactivate() override;
 
-    private:
-        RadianceCascadeComponentConfig m_configuration;
+        // Required by EditorComponentAdapter
+        RadianceCascadeComponentConfig GetConfiguration() const { return RadianceCascadeComponentConfig(); }
+        void SetConfiguration(const RadianceCascadeComponentConfig&) {}
     };
 }

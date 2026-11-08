@@ -1,0 +1,16 @@
+#include <Atom/Features/SrgSemantics.azsli>
+
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    RWTexture2D<float4> m_radianceOutput;
+}
+
+[numthreads(8, 8, 1)]
+void MainCS(uint3 threadId : SV_DispatchThreadID)
+{
+    uint2 dims;
+    PassSrg::m_radianceOutput.GetDimensions(dims.x, dims.y);
+    if (any(threadId.xy >= dims)) return;
+
+    PassSrg::m_radianceOutput[threadId.xy] = float4(0.0, 0.0, 0.0, 0.0);
+}

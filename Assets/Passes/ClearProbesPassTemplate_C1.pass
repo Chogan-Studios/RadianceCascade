@@ -3,17 +3,16 @@
     "ClassData": {
         "PassTemplate": {
             "Name": "ClearProbesPassTemplate_C1",
-            "PassClass": "CascadeInjectPass",
+            "PassClass": "AZ::RPI::ComputePass",
             "Slots": [
-                { "Name": "ProbeSHOutput", "SlotType": "Output", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_probeSH" },
-                { "Name": "ProbeSHHistoryInput", "SlotType": "InputOutput", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_probeSHHistory" }
+                { "Name": "Output", "SlotType": "Output", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_radianceOutput" }
             ],
             "ImageAttachments": [],
             "Connections": [],
             "PassData": {
                 "$type": "ComputePassData",
-                "ShaderAsset": { "FilePath": "Shaders/Utils/ClearProbes.shader" },
-                "ThreadCountX": 72, "ThreadCountY": 8, "ThreadCountZ": 8
+                "ShaderAsset": { "FilePath": "Shaders/Utils/CascadeClear.shader" },
+                "ThreadCountX": 8, "ThreadCountY": 8, "ThreadCountZ": 1
             }
         }
     }

@@ -1,0 +1,50 @@
+#include <Atom/Features/SrgSemantics.azsli>
+#include "../Utils/Octahedral.azsli"
+
+ShaderResourceGroup PassSrg : SRG_PerPass
+{
+    RWTexture2D<float4> m_output;
+    Texture2D<float4>   m_cascade0;
+    Texture2D<float4>   m_cascade1;
+    Texture2D<float>    m_depthTexture;
+    float4x4            m_invViewProj;
+}
+
+[numthreads(8, 8, 1)]
+void MainCS(uint3 threadId : SV_DispatchThreadID)
+{
+    uint2 outDims;
+    PassSrg::m_output.GetDimensions(outDims.x, outDims.y);
+    if (any(threadId.xy >= outDims)) return;
+
+    float2 uv = (float2(threadId.xy) + 0.5) / float2(outDims);
+    float depth = PassSrg::m_depthTexture.Load(int3(threadId.xy, 0));
+    
+    if (depth <= 0.0 || depth >= 1.0)
+    {
+        PassSrg::m_output[threadId.xy] = float4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
+    float4 worldPos = mul(PassSrg::m_invViewProj, float4(uv * 2.0 - 1.0, depth, 1.0));
+    worldPos /= worldPos.w;
+    float distToCamera = length(worldPos.xyz - PassSrg::m_invViewProj[3].xyz);
+
+    float4 gi = float4(0,0,0,0);
+    
+    // Clamp the coordinate to prevent out-of-bounds reads if the texture is smaller than the screen
+    uint2 cascade0Dims;
+    PassSrg::m_cascade0.GetDimensions(cascade0Dims.x, cascade0Dims.y);
+    uint2 c0Coord = min(threadId.xy, cascade0Dims - 1);
+
+    uint2 cascade1Dims;
+    PassSrg::m_cascade1.GetDimensions(cascade1Dims.x, cascade1Dims.y);
+    uint2 c1Coord = min(threadId.xy, cascade1Dims - 1);
+
+    if (distToCamera < 10.0)
+        gi = PassSrg::m_cascade0.Load(int3(c0Coord, 0));
+    else
+        gi = PassSrg::m_cascade1.Load(int3(c1Coord, 0));
+
+    PassSrg::m_output[threadId.xy] = gi;
+}

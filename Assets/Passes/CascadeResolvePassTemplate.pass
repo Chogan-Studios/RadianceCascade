@@ -1,0 +1,22 @@
+{
+    "Type": "JsonSerialization", "Version": 1, "ClassName": "PassAsset",
+    "ClassData": {
+        "PassTemplate": {
+            "Name": "CascadeResolvePassTemplate",
+            "PassClass": "AZ::RPI::ComputePass",
+            "Slots": [
+                { "Name": "Output", "SlotType": "Output", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_output" },
+                { "Name": "Cascade0", "SlotType": "Input", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_cascade0" },
+                { "Name": "Cascade1", "SlotType": "Input", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_cascade1" },
+                { "Name": "DepthInput", "SlotType": "Input", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_depthTexture" }
+            ],
+            "ImageAttachments": [],
+            "Connections": [],
+            "PassData": {
+                "$type": "ComputePassData",
+                "ShaderAsset": { "FilePath": "Shaders/Sample/CascadeResolve.shader" },
+                "ThreadCountX": 8, "ThreadCountY": 8, "ThreadCountZ": 1
+            }
+        }
+    }
+}

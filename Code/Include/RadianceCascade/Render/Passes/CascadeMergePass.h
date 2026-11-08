@@ -1,5 +1,4 @@
 #pragma once
-
 #include <Atom/RPI.Public/Pass/ComputePass.h>
 
 namespace RadianceCascade
@@ -15,8 +14,6 @@ namespace RadianceCascade
         CascadeMergePass(const AZ::RPI::PassDescriptor& descriptor);
         ~CascadeMergePass() = default;
 
-        void SetupFrameGraphDependencies(AZ::RHI::FrameGraphInterface frameGraph) override;
         void BuildInternal() override;
-        void FrameBeginInternal(FramePrepareParams params) override;
     };
 }

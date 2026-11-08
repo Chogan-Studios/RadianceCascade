@@ -7,7 +7,6 @@
 #
 
 set(FILES
-    Source/Clients/RadianceCascadeModule.cpp
     Source/Clients/RadianceCascadeSystemComponent.cpp
     Source/Clients/RadianceCascadeSystemComponent.h
     Source/Components/RadianceCascadeComponent.cpp
@@ -17,8 +16,6 @@ set(FILES
     Source/Components/RadianceCascadeComponentController.cpp
     Source/Components/RadianceCascadeComponentController.h
     Source/Render/CascadeFeatureProcessor.cpp
-    Source/Render/Passes/CascadeInjectPass.cpp
+    Source/Render/Passes/CascadeRayMarchPass.cpp
     Source/Render/Passes/CascadeMergePass.cpp
-    Source/Render/Passes/CascadeGISamplePass.cpp
-    Source/Render/Passes/CascadeReflectionSamplePass.cpp
 )

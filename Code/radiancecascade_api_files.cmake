@@ -7,7 +7,6 @@
 #
 
 set(FILES
-    Include/RadianceCascade/RadianceCascadeBus.h
     Include/RadianceCascade/RadianceCascadeTypeIds.h
     Include/RadianceCascade/RadianceCascadeFeatureProcessorInterface.h
 )

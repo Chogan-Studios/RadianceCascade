@@ -1,7 +1,6 @@
 #include <RadianceCascade/Render/Passes/CascadeMergePass.h>
-#include <Atom/RPI.Public/Shader/ShaderResourceGroup.h>
+#include <RadianceCascade/Render/CascadeFeatureProcessor.h>
 #include <Atom/RPI.Public/Scene.h>
-#include <AzCore/Name/Name.h>
 
 namespace RadianceCascade
 {
@@ -12,28 +11,24 @@ namespace RadianceCascade
 
     CascadeMergePass::CascadeMergePass(const AZ::RPI::PassDescriptor& descriptor)
         : ComputePass(descriptor)
-    {
-    }
-
-    // NOTE: This pass class is currently unused; merge passes are handled by CascadeInjectPass.
-    // The following functions are kept for future use but the static helper GetMergeLevelsFromName
-    // has been removed to avoid duplication with CascadeInjectPass.cpp.
-    // If you later decide to use this class, define GetMergeLevelsFromName here.
-
-    void CascadeMergePass::SetupFrameGraphDependencies(AZ::RHI::FrameGraphInterface frameGraph)
-    {
-        // This code is not called because the pass is not instantiated.
-        ComputePass::SetupFrameGraphDependencies(frameGraph);
-    }
+    {}
 
     void CascadeMergePass::BuildInternal()
     {
-        // This code is not called because the pass is not instantiated.
         ComputePass::BuildInternal();
-    }
 
-    void CascadeMergePass::FrameBeginInternal(FramePrepareParams params)
-    {
-        ComputePass::FrameBeginInternal(params);
+        auto* scene = GetScene();
+        if (!scene) return;
+        auto* fp = scene->GetFeatureProcessor<CascadeFeatureProcessor>();
+        if (!fp) return;
+
+        uint32_t fineLevel = 0, coarseLevel = 1;
+        if (GetName().GetStringView().ends_with("8_4")) { fineLevel = 1; coarseLevel = 2; }
+
+        auto fineImage = fp->GetRadianceImage(fineLevel);
+        if (fineImage) AttachImageToSlot(AZ::Name("FineRadiance"), fineImage);
+
+        auto coarseImage = fp->GetRadianceImage(coarseLevel);
+        if (coarseImage) AttachImageToSlot(AZ::Name("CoarseRadiance"), coarseImage);
     }
 }

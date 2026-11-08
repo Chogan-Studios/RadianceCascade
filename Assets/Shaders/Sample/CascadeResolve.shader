@@ -1,5 +1,5 @@
 {
-    "Source": "CascadeReflection.azsl",
+    "Source": "CascadeResolve.azsl",
     "ProgramSettings": {
         "EntryPoints": [
             { "name": "MainCS", "type": "Compute" }

@@ -3,20 +3,17 @@
     "ClassData": {
         "PassTemplate": {
             "Name": "CascadeMergePassTemplate_8_4",
-            "PassClass": "CascadeInjectPass",
+            "PassClass": "CascadeMergePass",
             "Slots": [
-                { "Name": "FineProbeInput", "SlotType": "InputOutput", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_fineProbeSH" },
-                { "Name": "CoarseProbeInput", "SlotType": "Input", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_coarseProbeSH" }
+                { "Name": "FineRadiance", "SlotType": "InputOutput", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_fineRadiance" },
+                { "Name": "CoarseRadiance", "SlotType": "Input", "ScopeAttachmentUsage": "Shader", "ShaderInputName": "m_coarseRadiance" }
             ],
             "ImageAttachments": [],
             "Connections": [],
             "PassData": {
                 "$type": "ComputePassData",
                 "ShaderAsset": { "FilePath": "Shaders/Merge/CascadeMerge_8_4.shader" },
-                
-                "ThreadCountX": 8, 
-                "ThreadCountY": 8, 
-                "ThreadCountZ": 8
+                "ThreadCountX": 8, "ThreadCountY": 8, "ThreadCountZ": 1
             }
         }
     }
